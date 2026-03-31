@@ -1,17 +1,48 @@
 import re
 import os
+import sqlite3
+import uuid
 from pathlib import Path
 from flask import Flask, render_template, jsonify, request, redirect
+from werkzeug.utils import secure_filename
 import openpyxl
 
 app = Flask(__name__)
 
-EXCEL_DIR  = Path(__file__).parent
-EXCEL_FILE = EXCEL_DIR / "Copy of MTL Recommendations - 2.0.xlsx"
+EXCEL_DIR   = Path(__file__).parent
+EXCEL_FILE  = EXCEL_DIR / "Copy of MTL Recommendations - 2.0.xlsx"
+DATABASE    = EXCEL_DIR / "bni.db"
+CHAPTERS_DIR = EXCEL_DIR / "chapters"
+CHAPTERS_DIR.mkdir(exist_ok=True)
+
+
+def get_db():
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db():
+    with get_db() as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS chapters (
+                id       INTEGER PRIMARY KEY AUTOINCREMENT,
+                name     TEXT NOT NULL,
+                slug     TEXT NOT NULL UNIQUE,
+                filename TEXT
+            )
+        """)
+
+
+def slugify(text):
+    text = text.lower().strip()
+    text = re.sub(r'[^a-z0-9\s-]', '', text)
+    text = re.sub(r'\s+', '-', text)
+    return text or str(uuid.uuid4())[:8]
 
 # ── Excel parser ─────────────────────────────────────────────────────────────
 
-def parse_recommendations():
+def parse_recommendations(filepath=None):
     """
     Read the Recommendations sheet and return:
       title   : str   — sheet title (e.g. "March 2026")
@@ -20,7 +51,8 @@ def parse_recommendations():
           metrics: [ {metric, your_score, max_score, pct, status, rec_text, tiers} ]
       }
     """
-    wb = openpyxl.load_workbook(EXCEL_FILE, data_only=True)
+    path = Path(filepath) if filepath else EXCEL_FILE
+    wb = openpyxl.load_workbook(path, data_only=True)
     ws = wb["Recommendations"]
 
     title = ""
@@ -178,6 +210,74 @@ def upload():
         f.save(EXCEL_FILE)
     return redirect("/")
 
+
+# ── Admin routes ─────────────────────────────────────────────────────────────
+
+@app.route("/admin")
+def admin():
+    with get_db() as conn:
+        chapters = conn.execute("SELECT * FROM chapters ORDER BY id DESC").fetchall()
+    return render_template("admin.html", chapters=chapters)
+
+
+@app.route("/admin/create", methods=["POST"])
+def admin_create():
+    name = request.form.get("name", "").strip()
+    if not name:
+        return redirect("/admin")
+    slug = slugify(name)
+    with get_db() as conn:
+        existing = conn.execute("SELECT id FROM chapters WHERE slug=?", (slug,)).fetchone()
+        if existing:
+            slug = slug + "-" + str(uuid.uuid4())[:6]
+        conn.execute("INSERT INTO chapters (name, slug) VALUES (?, ?)", (name, slug))
+    return redirect("/admin")
+
+
+@app.route("/admin/upload/<int:chapter_id>", methods=["POST"])
+def admin_upload(chapter_id):
+    f = request.files.get("excel")
+    if f and f.filename.endswith(".xlsx"):
+        filename = secure_filename(f"{chapter_id}_{f.filename}")
+        f.save(CHAPTERS_DIR / filename)
+        with get_db() as conn:
+            conn.execute("UPDATE chapters SET filename=? WHERE id=?", (filename, chapter_id))
+    return redirect("/admin")
+
+
+@app.route("/admin/delete/<int:chapter_id>", methods=["POST"])
+def admin_delete(chapter_id):
+    with get_db() as conn:
+        row = conn.execute("SELECT filename FROM chapters WHERE id=?", (chapter_id,)).fetchone()
+        if row and row["filename"]:
+            f = CHAPTERS_DIR / row["filename"]
+            if f.exists():
+                f.unlink()
+        conn.execute("DELETE FROM chapters WHERE id=?", (chapter_id,))
+    return redirect("/admin")
+
+
+@app.route("/c/<slug>")
+def chapter_dashboard(slug):
+    with get_db() as conn:
+        chapter = conn.execute("SELECT * FROM chapters WHERE slug=?", (slug,)).fetchone()
+    if not chapter:
+        return "Chapter not found", 404
+    if not chapter["filename"]:
+        return render_template("index.html",
+            title=chapter["name"], members=[],
+            counts={"green": 0, "amber": 0, "red": 0, "gray": 0})
+    filepath = CHAPTERS_DIR / chapter["filename"]
+    title, members = parse_recommendations(filepath=filepath)
+    counts = {"green": 0, "amber": 0, "red": 0, "gray": 0}
+    for m in members:
+        counts[m["traffic_light"]] += 1
+    return render_template("index.html", title=title, members=members, counts=counts)
+
+
+# ── Startup ───────────────────────────────────────────────────────────────────
+
+init_db()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5050, debug=True)

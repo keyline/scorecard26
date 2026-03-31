@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<title>BNI Admin — Chapters</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green:#16a34a; --green-bg:#dcfce7;
+  --accent:#f97316;
+  --bg:#f8fafc; --card:#fff; --border:#e2e8f0;
+  --text:#0f172a; --muted:#64748b;
+  --radius:16px; --shadow:0 2px 12px rgba(0,0,0,.08);
+}
+body{background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  font-size:15px;min-height:100vh;}
+
+/* Header */
+.header{background:#fff;border-bottom:1px solid var(--border);
+  padding:14px 16px;display:flex;align-items:center;gap:10px;
+  position:sticky;top:0;z-index:50;}
+.header-logo{width:36px;height:36px;background:var(--accent);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;font-weight:900;color:#fff;flex-shrink:0;}
+.header-title{font-size:16px;font-weight:800;}
+.header-sub{font-size:11px;color:var(--muted);}
+.view-dashboard{margin-left:auto;padding:7px 14px;border-radius:20px;
+  background:var(--green-bg);color:var(--green);font-size:13px;font-weight:600;
+  border:1.5px solid var(--green);text-decoration:none;white-space:nowrap;}
+
+.page{padding:16px;max-width:640px;margin:0 auto;}
+
+/* Create chapter card */
+.create-card{background:var(--card);border-radius:var(--radius);
+  padding:20px;box-shadow:var(--shadow);margin-bottom:24px;}
+.create-card h2{font-size:15px;font-weight:800;margin-bottom:14px;
+  display:flex;align-items:center;gap:8px;}
+.input-row{display:flex;gap:8px;}
+.text-input{flex:1;padding:12px 14px;border-radius:10px;
+  border:1.5px solid var(--border);font-size:15px;color:var(--text);
+  outline:none;background:#fff;}
+.text-input:focus{border-color:var(--accent);}
+.btn-create{padding:12px 20px;border-radius:10px;background:var(--accent);
+  color:#fff;font-size:14px;font-weight:700;border:none;cursor:pointer;
+  white-space:nowrap;}
+.btn-create:hover{opacity:.9;}
+
+/* Section heading */
+.section-heading{font-size:11px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;}
+
+/* Chapter card */
+.chapter-card{background:var(--card);border-radius:var(--radius);
+  padding:18px 16px;box-shadow:var(--shadow);margin-bottom:12px;}
+.chapter-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:14px;}
+.chapter-icon{width:40px;height:40px;border-radius:10px;background:#f1f5f9;
+  display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.chapter-info{flex:1;}
+.chapter-name{font-size:16px;font-weight:800;}
+.chapter-slug{font-size:11px;color:var(--muted);margin-top:2px;}
+.status-pill{padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;
+  border:1.5px solid;white-space:nowrap;flex-shrink:0;}
+.status-pill.uploaded{background:#dcfce7;color:#14532d;border-color:var(--green);}
+.status-pill.pending {background:#fef3c7;color:#78350f;border-color:#d97706;}
+
+/* Share link */
+.share-box{background:#f8fafc;border-radius:10px;padding:10px 12px;
+  margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.share-box .share-label{font-size:11px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;}
+.share-link{flex:1;font-size:13px;color:var(--accent);font-weight:600;
+  word-break:break-all;text-decoration:none;}
+.copy-btn{padding:5px 10px;border-radius:8px;background:var(--accent);
+  color:#fff;font-size:12px;font-weight:600;border:none;cursor:pointer;
+  white-space:nowrap;flex-shrink:0;}
+
+/* Upload row */
+.upload-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.file-label{flex:1;min-width:0;padding:10px 12px;border-radius:10px;
+  border:2px dashed var(--border);cursor:pointer;font-size:12px;color:var(--muted);
+  text-align:center;background:#fafafa;}
+.file-label:hover{border-color:var(--accent);color:var(--accent);}
+.file-label input{display:none;}
+.btn-upload{padding:10px 16px;border-radius:10px;background:#0f172a;
+  color:#fff;font-size:13px;font-weight:700;border:none;cursor:pointer;}
+.btn-upload:hover{opacity:.85;}
+
+/* Delete */
+.chapter-footer{display:flex;justify-content:flex-end;margin-top:10px;}
+.btn-delete{background:none;border:none;color:#ef4444;font-size:12px;
+  font-weight:600;cursor:pointer;padding:4px 0;}
+.btn-delete:hover{text-decoration:underline;}
+
+/* Empty state */
+.empty{text-align:center;padding:40px;color:var(--muted);}
+.empty .icon{font-size:40px;margin-bottom:10px;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">B</div>
+  <div>
+    <div class="header-title">BNI Admin</div>
+    <div class="header-sub">Chapter Management</div>
+  </div>
+  <a class="view-dashboard" href="/">↗ Main Dashboard</a>
+</div>
+
+<div class="page">
+
+  <!-- Create new chapter -->
+  <div class="create-card">
+    <h2>🏢 Create New Chapter</h2>
+    <form method="POST" action="/admin/create">
+      <div class="input-row">
+        <input class="text-input" type="text" name="name"
+          placeholder="e.g. BNI Powercity, BNI Sunrise…" required autocomplete="off"/>
+        <button class="btn-create" type="submit">+ Create</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Chapter list -->
+  <div class="section-heading">{{ chapters | length }} Chapter{{ 's' if chapters | length != 1 }}</div>
+
+  {% if not chapters %}
+  <div class="empty">
+    <div class="icon">📭</div>
+    <p>No chapters yet. Create your first one above.</p>
+  </div>
+  {% endif %}
+
+  {% for ch in chapters %}
+  {% set link = request.host_url + 'c/' + ch.slug %}
+  <div class="chapter-card">
+
+    <div class="chapter-top">
+      <div class="chapter-icon">🏢</div>
+      <div class="chapter-info">
+        <div class="chapter-name">{{ ch.name }}</div>
+        <div class="chapter-slug">/c/{{ ch.slug }}</div>
+      </div>
+      <span class="status-pill {{ 'uploaded' if ch.filename else 'pending' }}">
+        {{ '✓ File Ready' if ch.filename else '⏳ No File' }}
+      </span>
+    </div>
+
+    <!-- Shareable link -->
+    <div class="share-box">
+      <span class="share-label">🔗 Link</span>
+      <a class="share-link" href="/c/{{ ch.slug }}" target="_blank">{{ link }}</a>
+      <button class="copy-btn" onclick="copyLink('{{ link }}', this)">Copy</button>
+    </div>
+
+    <!-- Upload Excel -->
+    <form method="POST" action="/admin/upload/{{ ch.id }}" enctype="multipart/form-data">
+      <div class="upload-row">
+        <label class="file-label" id="label-{{ ch.id }}">
+          <input type="file" name="excel" accept=".xlsx"
+            onchange="updateLabel(this, {{ ch.id }})"/>
+          {% if ch.filename %}📄 Replace Excel file{% else %}📂 Upload Excel file (.xlsx){% endif %}
+        </label>
+        <button class="btn-upload" type="submit">Upload</button>
+      </div>
+    </form>
+
+    <!-- Delete -->
+    <div class="chapter-footer">
+      <form method="POST" action="/admin/delete/{{ ch.id }}"
+        onsubmit="return confirm('Delete chapter {{ ch.name }}?')">
+        <button class="btn-delete" type="submit">🗑 Delete chapter</button>
+      </form>
+    </div>
+
+  </div>
+  {% endfor %}
+
+</div>
+
+<script>
+function copyLink(url, btn) {
+  navigator.clipboard.writeText(url).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 2000);
+  });
+}
+function updateLabel(input, id) {
+  const label = document.getElementById('label-' + id);
+  const name = input.files[0] ? input.files[0].name : '📂 Upload Excel file (.xlsx)';
+  label.childNodes[label.childNodes.length - 1].textContent = name;
+}
+</script>
+</body>
+</html>
