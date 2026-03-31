@@ -231,7 +231,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 <div class="header">
   <div class="header-logo">B</div>
   <div>
-    <div class="header-title">BNI Scorecard</div>
+    <div class="header-title">{{ chapter_name if chapter_name else "BNI Scorecard" }}</div>
     <div class="header-sub">{{ title }}</div>
   </div>
   <button class="upload-btn" onclick="document.getElementById('uploadOverlay').classList.add('open')">

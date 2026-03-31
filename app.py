@@ -265,14 +265,15 @@ def chapter_dashboard(slug):
         return "Chapter not found", 404
     if not chapter["filename"]:
         return render_template("index.html",
-            title=chapter["name"], members=[],
-            counts={"green": 0, "amber": 0, "red": 0, "gray": 0})
+            title="No file uploaded yet", chapter_name=chapter["name"],
+            members=[], counts={"green": 0, "amber": 0, "red": 0, "gray": 0})
     filepath = CHAPTERS_DIR / chapter["filename"]
     title, members = parse_recommendations(filepath=filepath)
     counts = {"green": 0, "amber": 0, "red": 0, "gray": 0}
     for m in members:
         counts[m["traffic_light"]] += 1
-    return render_template("index.html", title=title, members=members, counts=counts)
+    return render_template("index.html", title=title, chapter_name=chapter["name"],
+                           members=members, counts=counts)
 
 
 # ── Startup ───────────────────────────────────────────────────────────────────
