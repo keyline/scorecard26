@@ -21,9 +21,7 @@ body{background:var(--bg);color:var(--text);
 .header{background:#fff;border-bottom:1px solid var(--border);
   padding:14px 16px;display:flex;align-items:center;gap:10px;
   position:sticky;top:0;z-index:50;}
-.header-logo{width:36px;height:36px;background:var(--accent);border-radius:8px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:18px;font-weight:900;color:#fff;flex-shrink:0;}
+.header-logo-img{height:30px;width:auto;flex-shrink:0;object-fit:contain;}
 .header-title{font-size:16px;font-weight:800;}
 .header-sub{font-size:11px;color:var(--muted);}
 .view-dashboard{margin-left:auto;padding:7px 14px;border-radius:20px;
@@ -107,7 +105,7 @@ body{background:var(--bg);color:var(--text);
 <body>
 
 <div class="header">
-  <div class="header-logo">B</div>
+  <img src="/static/bni_logo.png" alt="BNI" class="header-logo-img"/>
   <div>
     <div class="header-title">BNI Admin</div>
     <div class="header-sub">Chapter Management</div>
