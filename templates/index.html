@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<title>BNI Member Scorecard</title>
+<style>
+/* ── Reset & base ── */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green:#16a34a; --green-bg:#dcfce7; --green-text:#14532d;
+  --amber:#d97706; --amber-bg:#fef3c7; --amber-text:#78350f;
+  --red:#dc2626;   --red-bg:#fee2e2;   --red-text:#7f1d1d;
+  --black:#1e1e1e; --black-bg:#e5e5e5; --black-text:#1e1e1e;
+  --gray:#6b7280;  --gray-bg:#f3f4f6;  --gray-text:#374151;
+  --bg:#f8fafc; --card:#fff; --border:#e2e8f0;
+  --text:#0f172a; --muted:#64748b; --accent:#f97316;
+  --radius:16px; --shadow:0 2px 12px rgba(0,0,0,.08);
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  min-height:100vh;font-size:15px;}
+
+/* ── Header ── */
+.header{background:#fff;border-bottom:1px solid var(--border);
+  padding:14px 16px;position:sticky;top:0;z-index:50;
+  display:flex;align-items:center;gap:10px;}
+.header-logo{width:36px;height:36px;background:var(--accent);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;font-weight:900;color:#fff;flex-shrink:0;}
+.header-title{font-size:16px;font-weight:800;color:var(--text);line-height:1.2;}
+.header-sub{font-size:11px;color:var(--muted);}
+.upload-btn{margin-left:auto;padding:7px 14px;border-radius:20px;
+  background:var(--accent);color:#fff;font-size:13px;font-weight:600;
+  border:none;cursor:pointer;white-space:nowrap;}
+
+/* ── Page ── */
+.page{padding:16px;max-width:520px;margin:0 auto;}
+
+/* ── Summary cards ── */
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px;}
+.scard{border-radius:14px;padding:14px 10px;text-align:center;border:2px solid transparent;}
+.scard .num{font-size:32px;font-weight:900;line-height:1;}
+.scard .lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:3px;}
+.scard .range{font-size:9px;font-weight:500;opacity:.7;margin-top:2px;}
+.scard.green{background:var(--green-bg);border-color:var(--green);}
+.scard.green .num,.scard.green .lbl{color:var(--green-text);}
+.scard.amber{background:var(--amber-bg);border-color:var(--amber);}
+.scard.amber .num,.scard.amber .lbl{color:var(--amber-text);}
+.scard.red{background:var(--red-bg);border-color:var(--red);}
+.scard.red .num,.scard.red .lbl{color:var(--red-text);}
+.scard.black{background:var(--black-bg);border-color:var(--black);}
+.scard.black .num,.scard.black .lbl{color:var(--black-text);}
+.scard.gray{background:var(--gray-bg);border-color:var(--gray);}
+.scard.gray .num,.scard.gray .lbl{color:var(--gray-text);}
+
+/* ── Member selector ── */
+.selector-wrap{background:var(--card);border-radius:var(--radius);
+  padding:16px;box-shadow:var(--shadow);margin-bottom:16px;}
+.selector-label{font-size:12px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;}
+.selector-row{display:flex;gap:8px;}
+.search-box{position:relative;flex:1;}
+.search-input{width:100%;padding:12px 40px 12px 14px;border-radius:10px;
+  border:1.5px solid var(--border);background:#fff;color:var(--text);
+  font-size:15px;font-weight:500;outline:none;}
+.search-input:focus{border-color:var(--accent);}
+.search-clear{position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;
+  display:none;padding:0;line-height:1;}
+.search-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;
+  background:#fff;border:1.5px solid var(--border);border-radius:10px;
+  box-shadow:0 8px 24px rgba(0,0,0,.12);max-height:260px;overflow-y:auto;
+  z-index:100;display:none;}
+.search-dropdown.open{display:block;}
+.search-option{padding:11px 14px;cursor:pointer;font-size:14px;font-weight:500;
+  border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.search-option:last-child{border-bottom:none;}
+.search-option:hover,.search-option.focused{background:#f8fafc;}
+.search-option .opt-name{flex:1;}
+.search-option .opt-score{font-size:12px;color:var(--muted);}
+.search-no-results{padding:14px;text-align:center;color:var(--muted);font-size:13px;}
+
+/* ── Member card ── */
+.member-card{display:none;}
+.member-card.active{display:block;}
+
+/* Hero */
+.hero{background:var(--card);border-radius:var(--radius);
+  padding:20px 16px;box-shadow:var(--shadow);margin-bottom:12px;text-align:center;}
+.hero-name{font-size:22px;font-weight:800;margin-bottom:12px;}
+.tl-badge{display:inline-block;padding:5px 20px;border-radius:20px;
+  font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;}
+.tl-badge.green{background:var(--green-bg);color:var(--green-text);border:1.5px solid var(--green);}
+.tl-badge.amber{background:var(--amber-bg);color:var(--amber-text);border:1.5px solid var(--amber);}
+.tl-badge.red  {background:var(--red-bg);  color:var(--red-text);  border:1.5px solid var(--red);}
+.tl-badge.black{background:var(--black-bg);color:var(--black-text);border:1.5px solid var(--black);}
+.tl-badge.gray {background:var(--gray-bg); color:var(--gray-text); border:1.5px solid var(--gray);}
+
+/* Score ring */
+.ring-wrap{display:flex;justify-content:center;margin-bottom:12px;}
+.ring{width:110px;height:110px;border-radius:50%;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;border:7px solid var(--border);position:relative;}
+.ring.green{border-color:var(--green);}
+.ring.amber{border-color:var(--amber);}
+.ring.red  {border-color:var(--red);}
+.ring.black{border-color:var(--black);}
+.ring.gray {border-color:var(--gray);}
+.ring-score{font-size:30px;font-weight:900;line-height:1;}
+.ring.green .ring-score{color:var(--green-text);}
+.ring.amber .ring-score{color:var(--amber-text);}
+.ring.red   .ring-score{color:var(--red-text);}
+.ring.black .ring-score{color:var(--black-text);}
+.ring.gray  .ring-score{color:var(--gray-text);}
+.ring-max{font-size:12px;color:var(--muted);}
+
+/* Overall bar */
+.overall-bar-wrap{padding:0 8px;}
+.bar-label{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px;}
+.bar-bg{height:10px;background:var(--border);border-radius:5px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:5px;transition:width .5s;}
+.bar-fill.green{background:var(--green);}
+.bar-fill.amber{background:var(--amber);}
+.bar-fill.red  {background:var(--red);}
+.bar-fill.black{background:var(--black);}
+.bar-fill.gray {background:var(--gray);}
+
+/* ── Metrics section ── */
+.section-title{font-size:11px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.08em;margin:18px 0 10px;}
+
+/* Metric block */
+.metric-block{background:var(--card);border-radius:14px;
+  padding:15px 16px;margin-bottom:10px;box-shadow:var(--shadow);}
+.metric-header{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+.metric-name{font-size:15px;font-weight:700;flex:1;}
+.metric-score{font-size:14px;color:var(--muted);white-space:nowrap;}
+.status-badge{padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border:1.5px solid;}
+.status-badge.full   {background:var(--green-bg);color:var(--green-text);border-color:var(--green);}
+.status-badge.partial{background:var(--amber-bg);color:var(--amber-text);border-color:var(--amber);}
+.status-badge.none   {background:var(--red-bg);  color:var(--red-text);  border-color:var(--red);}
+
+/* Progress bar */
+.metric-bar-bg{height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:8px;}
+.metric-bar-fill{height:100%;border-radius:4px;}
+.metric-bar-fill.full   {background:var(--green);}
+.metric-bar-fill.partial{background:var(--amber);}
+.metric-bar-fill.none   {background:#cbd5e1;}
+
+/* Tiers row */
+.tiers{display:flex;align-items:center;gap:4px;overflow-x:auto;padding-bottom:2px;}
+.tier-sep{color:#cbd5e1;font-size:14px;flex-shrink:0;}
+.tier-box{flex-shrink:0;min-width:58px;border-radius:10px;padding:7px 5px 5px;
+  text-align:center;border:2px solid var(--border);background:#f8fafc;}
+.tier-box.done  {background:#dcfce7;border-color:var(--green);}
+.tier-box.next  {background:#fff7ed;border-color:var(--accent);border-width:2.5px;}
+.tier-box.future{background:#f1f5f9;border-color:#cbd5e1;opacity:.85;}
+.tier-pts{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px;}
+.tier-box.done   .tier-pts{color:var(--green-text);}
+.tier-box.next   .tier-pts{color:#c2410c;}
+.tier-box.future .tier-pts{color:#94a3b8;}
+.tier-val{font-size:17px;font-weight:800;line-height:1.1;}
+.tier-box.done   .tier-val{color:var(--green-text);}
+.tier-box.next   .tier-val{color:#c2410c;}
+.tier-box.future .tier-val{color:#64748b;}
+.tier-sub{font-size:9px;margin-top:2px;}
+.tier-box.done   .tier-sub{color:var(--green-text);}
+.tier-box.next   .tier-sub{color:#c2410c;}
+.tier-box.future .tier-sub{color:#94a3b8;}
+
+/* Absent target */
+.absent-row{display:flex;align-items:center;gap:14px;}
+.target-box{flex-shrink:0;min-width:76px;border-radius:12px;padding:10px 8px;
+  text-align:center;border:2.5px solid var(--accent);background:#fff7ed;}
+.target-lbl{font-size:9px;font-weight:800;color:#c2410c;text-transform:uppercase;letter-spacing:.04em;}
+.target-num{font-size:26px;font-weight:900;color:#c2410c;line-height:1.1;}
+.target-unit{font-size:10px;font-weight:600;color:#c2410c;}
+.target-arrow{font-size:11px;color:#c2410c;margin-top:2px;}
+.absent-desc{font-size:13px;color:var(--muted);line-height:1.5;}
+
+/* Sponsorship */
+.spon-row{display:flex;align-items:center;gap:10px;background:#f8fafc;
+  border-radius:10px;padding:10px 12px;}
+.spon-icon{font-size:22px;}
+.spon-text{font-size:13px;color:var(--muted);line-height:1.4;}
+
+/* TOTAL block */
+.total-block{background:var(--card);border-radius:14px;padding:15px 16px;
+  margin-bottom:24px;box-shadow:var(--shadow);}
+.total-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.total-label{font-size:16px;font-weight:800;}
+.total-value{font-size:22px;font-weight:900;}
+.total-value.green{color:var(--green-text);}
+.total-value.amber{color:var(--amber-text);}
+.total-value.red  {color:var(--red-text);}
+.total-value.black{color:var(--black-text);}
+.total-value.gray {color:var(--gray-text);}
+.total-bar-bg{height:12px;background:var(--border);border-radius:6px;overflow:hidden;}
+.total-bar-fill{height:100%;border-radius:6px;}
+.total-bar-fill.green{background:var(--green);}
+.total-bar-fill.amber{background:var(--amber);}
+.total-bar-fill.red  {background:var(--red);}
+.total-bar-fill.black{background:var(--black);}
+.total-bar-fill.gray {background:var(--gray);}
+.total-sub{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px;}
+
+/* Upload modal */
+.upload-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
+  z-index:200;align-items:center;justify-content:center;padding:20px;}
+.upload-overlay.open{display:flex;}
+.upload-modal{background:#fff;border-radius:20px;padding:24px;width:100%;max-width:360px;}
+.upload-modal h3{font-size:18px;font-weight:800;margin-bottom:6px;}
+.upload-modal p{font-size:13px;color:var(--muted);margin-bottom:16px;}
+.file-input-label{display:block;border:2px dashed var(--border);border-radius:12px;
+  padding:24px;text-align:center;cursor:pointer;color:var(--muted);font-size:13px;margin-bottom:14px;}
+.file-input-label:hover{border-color:var(--accent);color:var(--accent);}
+.file-input-label input{display:none;}
+.modal-btns{display:flex;gap:8px;}
+.btn-primary{flex:1;padding:12px;border-radius:10px;background:var(--accent);
+  color:#fff;font-weight:700;border:none;cursor:pointer;font-size:14px;}
+.btn-secondary{padding:12px 16px;border-radius:10px;background:var(--border);
+  color:var(--text);font-weight:600;border:none;cursor:pointer;font-size:14px;}
+.empty-state{text-align:center;padding:40px 20px;color:var(--muted);}
+.empty-state .icon{font-size:48px;margin-bottom:12px;}
+.empty-state p{font-size:14px;}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-logo">B</div>
+  <div>
+    <div class="header-title">BNI Scorecard</div>
+    <div class="header-sub">{{ title }}</div>
+  </div>
+  <button class="upload-btn" onclick="document.getElementById('uploadOverlay').classList.add('open')">
+    ↑ Upload Excel
+  </button>
+</div>
+
+<div class="page">
+
+  <!-- Summary -->
+  <div class="summary">
+    <div class="scard green">
+      <div class="num">{{ counts.green }}</div>
+      <div class="lbl">🟢 Green</div>
+      <div class="range">70 – 100</div>
+    </div>
+    <div class="scard amber">
+      <div class="num">{{ counts.amber }}</div>
+      <div class="lbl">🟡 Amber</div>
+      <div class="range">50 – 69</div>
+    </div>
+    <div class="scard red">
+      <div class="num">{{ counts.red }}</div>
+      <div class="lbl">🔴 Red</div>
+      <div class="range">26 – 49</div>
+    </div>
+    <div class="scard gray">
+      <div class="num">{{ counts.gray }}</div>
+      <div class="lbl">🩶 Gray</div>
+      <div class="range">0 – 25</div>
+    </div>
+  </div>
+
+  <!-- Member selector -->
+  <div class="selector-wrap">
+    <div class="selector-label">Select Member</div>
+    <div class="selector-row">
+      <div class="search-box" id="searchBox">
+        <input type="text" class="search-input" id="searchInput"
+          placeholder="🔍  Search member name…"
+          autocomplete="off" autocorrect="off" spellcheck="false"
+          oninput="filterMembers()" onfocus="openDropdown()" />
+        <button class="search-clear" id="searchClear" onclick="clearSearch()">✕</button>
+        <div class="search-dropdown" id="searchDropdown">
+          {% for m in members %}
+          <div class="search-option"
+            data-name="{{ m.name }}"
+            data-tl="{{ m.traffic_light }}"
+            onclick="selectMember('{{ m.name }}')">
+            <span>{% if m.traffic_light == "green" %}🟢{% elif m.traffic_light == "amber" %}🟡{% elif m.traffic_light == "red" %}🔴{% else %}🩶{% endif %}</span>
+            <span class="opt-name">{{ m.name }}</span>
+            <span class="opt-score">{{ m.total_score }}/{{ m.max_score }}</span>
+          </div>
+          {% endfor %}
+          <div class="search-no-results" id="noResults" style="display:none;">No members found</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div id="emptyState" class="empty-state">
+    <div class="icon">👆</div>
+    <p>Select a member above to view their scorecard and recommendations.</p>
+  </div>
+
+  <!-- Member cards (one per member, shown/hidden via JS) -->
+  {% for m in members %}
+  {% set tl = m.traffic_light %}
+  {% set total_m = m.metrics | selectattr("metric","equalto","TOTAL") | list | first %}
+  {% set other_metrics = m.metrics | rejectattr("metric","equalto","TOTAL") | list %}
+
+  <div class="member-card" id="card-{{ m.name | replace(' ','_') | replace('(','') | replace(')','') | replace('.','') }}">
+
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-name">{{ m.name }}</div>
+      <div class="ring-wrap">
+        <div class="ring {{ tl }}">
+          <span class="ring-score">{{ m.total_score }}</span>
+          <span class="ring-max">/ {{ m.max_score }}</span>
+        </div>
+      </div>
+      <div><span class="tl-badge {{ tl }}">{{ tl | title }}</span></div>
+      <div class="overall-bar-wrap" style="margin-top:12px;">
+        <div class="bar-label"><span>Overall Score</span><span>{{ m.pct }}%</span></div>
+        <div class="bar-bg"><div class="bar-fill {{ tl }}" style="width:{{ m.pct }}%"></div></div>
+      </div>
+    </div>
+
+    <!-- Metrics -->
+    <div class="section-title">Score Details &amp; Recommendations</div>
+
+    {% for r in other_metrics %}
+    {% set bar_pct = [r.pct, 100] | min %}
+
+    <div class="metric-block">
+      <div class="metric-header">
+        <span class="metric-name">
+          {% if r.metric == "Absent" %}🏠
+          {% elif r.metric == "One to One" %}🤝
+          {% elif r.metric == "Referrals" %}📤
+          {% elif r.metric == "Visitors" %}👥
+          {% elif r.metric in ("TYFTB","TYFCB") %}💰
+          {% elif r.metric == "Sponsorship" %}⭐
+          {% elif r.metric == "CEU" %}📚
+          {% endif %}
+          {{ r.metric }}
+        </span>
+        <span class="metric-score">{{ r.your_score }} / {{ r.max_score }} pts</span>
+        <span class="status-badge {{ r.status }}">
+          {% if r.status == "full" %}Done ✓
+          {% elif r.status == "partial" %}Partial
+          {% else %}Not Yet{% endif %}
+        </span>
+      </div>
+
+      <div class="metric-bar-bg">
+        <div class="metric-bar-fill {{ r.status }}" style="width:{{ bar_pct }}%"></div>
+      </div>
+
+      {% if r.metric == "Absent" %}
+        <div class="absent-row">
+          <div class="target-box">
+            <div class="target-lbl">Target</div>
+            <div class="target-num">0</div>
+            <div class="target-unit">Absences</div>
+            <div class="target-arrow">→</div>
+          </div>
+          <div class="absent-desc">
+            {% if r.your_score == r.max_score %}
+              Perfect attendance! Keep it up. 🎉
+            {% else %}
+              Reduce absences to zero to earn full <strong>{{ r.max_score }} pts</strong>.
+            {% endif %}
+          </div>
+        </div>
+
+      {% elif r.metric == "Sponsorship" %}
+        <div class="spon-row">
+          <span class="spon-icon">🤝</span>
+          <span class="spon-text">
+            {% if r.your_score > 0 %}
+              You've sponsored a member — great contribution! ({{ r.your_score }}/{{ r.max_score }} pts)
+            {% else %}
+              Sponsor a new BNI member to earn <strong>{{ r.max_score }} pts</strong>.
+            {% endif %}
+          </span>
+        </div>
+
+      {% elif r.tiers %}
+        <div class="tiers">
+          {% for tier in r.tiers %}
+          {% if not loop.first %}<span class="tier-sep">›</span>{% endif %}
+          <div class="tier-box {{ tier.status }}">
+            <div class="tier-pts">{{ tier.pts }} pts</div>
+            <div class="tier-val">{{ tier.fmt }}</div>
+            <div class="tier-sub">
+              {% if tier.status == "done" %}Done ✓
+              {% elif tier.status == "next" %}Next →
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+      {% elif r.rec_text %}
+        <div style="font-size:13px;color:var(--muted);padding:4px 0;">💡 {{ r.rec_text }}</div>
+      {% endif %}
+
+    </div>
+    {% endfor %}
+
+    <!-- Total -->
+    {% if total_m %}
+    <div class="total-block">
+      <div class="total-header">
+        <span class="total-label">Total Score</span>
+        <span class="total-value {{ tl }}">{{ total_m.your_score }} <span style="font-size:14px;color:var(--muted);font-weight:400;">/ {{ total_m.max_score }}</span></span>
+      </div>
+      <div class="total-bar-bg">
+        <div class="total-bar-fill {{ tl }}" style="width:{{ [total_m.pct,100]|min }}%"></div>
+      </div>
+      <div class="total-sub"><span>0</span><span>{{ total_m.pct }}%</span><span>{{ total_m.max_score }}</span></div>
+    </div>
+    {% endif %}
+
+  </div>
+  {% endfor %}
+
+</div><!-- /page -->
+
+<!-- Upload overlay -->
+<div class="upload-overlay" id="uploadOverlay">
+  <div class="upload-modal">
+    <h3>Upload New Excel</h3>
+    <p>Upload the updated BNI Excel file. Data will refresh immediately.</p>
+    <form method="post" action="/upload" enctype="multipart/form-data" id="uploadForm">
+      <label class="file-input-label" id="fileLabel">
+        <div style="font-size:28px;margin-bottom:6px;">📂</div>
+        <div id="fileLabelText">Tap to choose .xlsx file</div>
+        <input type="file" name="excel" accept=".xlsx" onchange="updateFileLabel(this)">
+      </label>
+      <div class="modal-btns">
+        <button type="button" class="btn-secondary"
+          onclick="document.getElementById('uploadOverlay').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn-primary">Upload &amp; Refresh</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const nameToId = {};
+{% for m in members %}
+nameToId["{{ m.name }}"] = "card-{{ m.name | replace(' ','_') | replace('(','') | replace(')','') | replace('.','') }}";
+{% endfor %}
+
+let selectedMember = '';
+
+function showMember(name) {
+  document.querySelectorAll('.member-card').forEach(c => c.classList.remove('active'));
+  const empty = document.getElementById('emptyState');
+  if (!name) { empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  const id = nameToId[name];
+  if (id) {
+    const card = document.getElementById(id);
+    if (card) {
+      card.classList.add('active');
+      card.scrollIntoView({behavior:'smooth', block:'start'});
+    }
+  }
+}
+
+function selectMember(name) {
+  selectedMember = name;
+  document.getElementById('searchInput').value = name;
+  document.getElementById('searchClear').style.display = 'block';
+  closeDropdown();
+  showMember(name);
+}
+
+function openDropdown() {
+  filterMembers();
+  document.getElementById('searchDropdown').classList.add('open');
+}
+
+function closeDropdown() {
+  document.getElementById('searchDropdown').classList.remove('open');
+}
+
+function filterMembers() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const options = document.querySelectorAll('.search-option');
+  let visible = 0;
+  options.forEach(opt => {
+    const match = opt.dataset.name.toLowerCase().includes(q);
+    opt.style.display = match ? '' : 'none';
+    if (match) visible++;
+  });
+  document.getElementById('noResults').style.display = visible === 0 ? 'block' : 'none';
+  document.getElementById('searchClear').style.display = q ? 'block' : 'none';
+  document.getElementById('searchDropdown').classList.add('open');
+}
+
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchClear').style.display = 'none';
+  selectedMember = '';
+  filterMembers();
+  showMember('');
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', e => {
+  if (!document.getElementById('searchBox').contains(e.target)) {
+    closeDropdown();
+    // Restore selected name if user typed something partial
+    if (selectedMember) document.getElementById('searchInput').value = selectedMember;
+    else document.getElementById('searchInput').value = '';
+  }
+});
+
+function updateFileLabel(input) {
+  const label = document.getElementById('fileLabelText');
+  label.textContent = input.files[0] ? input.files[0].name : 'Tap to choose .xlsx file';
+}
+
+// Check URL param ?member=Name
+const params = new URLSearchParams(window.location.search);
+const preselect = params.get('member');
+if (preselect) {
+  selectMember(preselect);
+}
+</script>
+</body>
+</html>
