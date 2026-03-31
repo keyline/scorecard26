@@ -129,7 +129,7 @@ body{background:var(--bg);color:var(--text);
       <div class="chapter-meta">
         {% if ch.filename %}
         <span class="member-pill"><span class="dot"></span>{{ ch.member_count }} Member{{ 's' if ch.member_count != 1 }}</span>
-        <span class="uploaded-tag">Updated {{ ch.uploaded_at }}</span>
+        {% if ch.uploaded_at %}<span class="uploaded-tag">Updated {{ ch.uploaded_at }}</span>{% endif %}
         {% else %}
         <span class="no-file-tag">⏳ No file uploaded</span>
         {% endif %}

@@ -310,5 +310,19 @@ def chapter_dashboard(slug):
 
 init_db()
 
+# Backfill member_count for chapters uploaded before this column existed
+with get_db() as _conn:
+    _rows = _conn.execute(
+        "SELECT id, filename FROM chapters WHERE filename IS NOT NULL AND member_count = 0"
+    ).fetchall()
+for _row in _rows:
+    try:
+        _, _members = parse_recommendations(filepath=CHAPTERS_DIR / _row["filename"])
+        with get_db() as _conn:
+            _conn.execute("UPDATE chapters SET member_count=? WHERE id=?",
+                          (len(_members), _row["id"]))
+    except Exception:
+        pass
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5050, debug=True)
