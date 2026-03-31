@@ -2,6 +2,7 @@ import re
 import os
 import sqlite3
 import uuid
+from datetime import datetime
 from pathlib import Path
 from flask import Flask, render_template, jsonify, request, redirect
 from werkzeug.utils import secure_filename
@@ -238,7 +239,18 @@ def admin_create():
 def admin_upload(chapter_id):
     f = request.files.get("excel")
     if f and f.filename.endswith(".xlsx"):
-        filename = secure_filename(f"{chapter_id}_{f.filename}")
+        with get_db() as conn:
+            row = conn.execute("SELECT name, filename FROM chapters WHERE id=?", (chapter_id,)).fetchone()
+        # Delete old file if exists
+        if row and row["filename"]:
+            old = CHAPTERS_DIR / row["filename"]
+            if old.exists():
+                old.unlink()
+        # Build new filename: chaptername_YYYYMMDD_HHMMSS.xlsx
+        chapter_name = row["name"] if row else str(chapter_id)
+        safe_name = re.sub(r'[^a-z0-9]+', '_', chapter_name.lower()).strip('_')
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{safe_name}_{timestamp}.xlsx"
         f.save(CHAPTERS_DIR / filename)
         with get_db() as conn:
             conn.execute("UPDATE chapters SET filename=? WHERE id=?", (filename, chapter_id))

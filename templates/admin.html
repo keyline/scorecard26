@@ -76,6 +76,12 @@ body{background:var(--bg);color:var(--text);
   color:#fff;font-size:12px;font-weight:600;border:none;cursor:pointer;
   white-space:nowrap;flex-shrink:0;}
 
+/* Connected file */
+.file-info-row{display:flex;align-items:center;gap:8px;background:#f0fdf4;
+  border:1.5px solid var(--green);border-radius:10px;padding:9px 12px;margin-bottom:10px;}
+.file-info-icon{font-size:16px;flex-shrink:0;}
+.file-info-name{font-size:12px;font-weight:600;color:#14532d;word-break:break-all;}
+
 /* Upload row */
 .upload-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
 .file-label{flex:1;min-width:0;padding:10px 12px;border-radius:10px;
@@ -155,13 +161,21 @@ body{background:var(--bg);color:var(--text);
       <button class="copy-btn" onclick="copyLink('{{ link }}', this)">Copy</button>
     </div>
 
+    <!-- Connected file -->
+    {% if ch.filename %}
+    <div class="file-info-row">
+      <span class="file-info-icon">📄</span>
+      <span class="file-info-name">{{ ch.filename }}</span>
+    </div>
+    {% endif %}
+
     <!-- Upload Excel -->
     <form method="POST" action="/admin/upload/{{ ch.id }}" enctype="multipart/form-data">
       <div class="upload-row">
         <label class="file-label" id="label-{{ ch.id }}">
           <input type="file" name="excel" accept=".xlsx"
             onchange="updateLabel(this, {{ ch.id }})"/>
-          {% if ch.filename %}📄 Replace Excel file{% else %}📂 Upload Excel file (.xlsx){% endif %}
+          {% if ch.filename %}🔄 Replace Excel file{% else %}📂 Upload Excel file (.xlsx){% endif %}
         </label>
         <button class="btn-upload" type="submit">Upload</button>
       </div>
