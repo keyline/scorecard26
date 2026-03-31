@@ -27,12 +27,20 @@ def init_db():
     with get_db() as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS chapters (
-                id       INTEGER PRIMARY KEY AUTOINCREMENT,
-                name     TEXT NOT NULL,
-                slug     TEXT NOT NULL UNIQUE,
-                filename TEXT
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                name         TEXT NOT NULL,
+                slug         TEXT NOT NULL UNIQUE,
+                filename     TEXT,
+                member_count INTEGER DEFAULT 0,
+                uploaded_at  TEXT
             )
         """)
+        # Add columns if upgrading from older schema
+        for col, defn in [("member_count", "INTEGER DEFAULT 0"), ("uploaded_at", "TEXT")]:
+            try:
+                conn.execute(f"ALTER TABLE chapters ADD COLUMN {col} {defn}")
+            except Exception:
+                pass
 
 
 def slugify(text):
@@ -188,11 +196,9 @@ def _indian(n):
 
 @app.route("/")
 def index():
-    title, members = parse_recommendations()
-    counts = {"green": 0, "amber": 0, "red": 0, "gray": 0}
-    for m in members:
-        counts[m["traffic_light"]] += 1
-    return render_template("index.html", title=title, members=members, counts=counts)
+    with get_db() as conn:
+        chapters = conn.execute("SELECT * FROM chapters ORDER BY name ASC").fetchall()
+    return render_template("home.html", chapters=chapters)
 
 
 @app.route("/api/member/<path:name>")
@@ -249,11 +255,23 @@ def admin_upload(chapter_id):
         # Build new filename: chaptername_YYYYMMDD_HHMMSS.xlsx
         chapter_name = row["name"] if row else str(chapter_id)
         safe_name = re.sub(r'[^a-z0-9]+', '_', chapter_name.lower()).strip('_')
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        now = datetime.now()
+        timestamp = now.strftime("%Y%m%d_%H%M%S")
         filename = f"{safe_name}_{timestamp}.xlsx"
-        f.save(CHAPTERS_DIR / filename)
+        filepath = CHAPTERS_DIR / filename
+        f.save(filepath)
+        # Count members from the uploaded file
+        try:
+            _, members = parse_recommendations(filepath=filepath)
+            member_count = len(members)
+        except Exception:
+            member_count = 0
+        uploaded_at = now.strftime("%d %b %Y, %I:%M %p")
         with get_db() as conn:
-            conn.execute("UPDATE chapters SET filename=? WHERE id=?", (filename, chapter_id))
+            conn.execute(
+                "UPDATE chapters SET filename=?, member_count=?, uploaded_at=? WHERE id=?",
+                (filename, member_count, uploaded_at, chapter_id)
+            )
     return redirect("/admin")
 
 
