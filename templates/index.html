@@ -234,9 +234,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
     <div class="header-title">{{ chapter_name if chapter_name else "BNI Scorecard" }}</div>
     <div class="header-sub">{{ title }}</div>
   </div>
-  <button class="upload-btn" onclick="document.getElementById('uploadOverlay').classList.add('open')">
-    ↑ Upload Excel
-  </button>
+  <a href="/" class="upload-btn" style="text-decoration:none;">← Chapters</a>
 </div>
 
 <div class="page">
@@ -424,25 +422,6 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 
 </div><!-- /page -->
 
-<!-- Upload overlay -->
-<div class="upload-overlay" id="uploadOverlay">
-  <div class="upload-modal">
-    <h3>Upload New Excel</h3>
-    <p>Upload the updated BNI Excel file. Data will refresh immediately.</p>
-    <form method="post" action="/upload" enctype="multipart/form-data" id="uploadForm">
-      <label class="file-input-label" id="fileLabel">
-        <div style="font-size:28px;margin-bottom:6px;">📂</div>
-        <div id="fileLabelText">Tap to choose .xlsx file</div>
-        <input type="file" name="excel" accept=".xlsx" onchange="updateFileLabel(this)">
-      </label>
-      <div class="modal-btns">
-        <button type="button" class="btn-secondary"
-          onclick="document.getElementById('uploadOverlay').classList.remove('open')">Cancel</button>
-        <button type="submit" class="btn-primary">Upload &amp; Refresh</button>
-      </div>
-    </form>
-  </div>
-</div>
 
 <script>
 const nameToId = {};
@@ -515,11 +494,6 @@ document.addEventListener('click', e => {
     else document.getElementById('searchInput').value = '';
   }
 });
-
-function updateFileLabel(input) {
-  const label = document.getElementById('fileLabelText');
-  label.textContent = input.files[0] ? input.files[0].name : 'Tap to choose .xlsx file';
-}
 
 // Check URL param ?member=Name
 const params = new URLSearchParams(window.location.search);
