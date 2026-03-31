@@ -2,13 +2,16 @@ import re
 import os
 import sqlite3
 import uuid
+import io
 from datetime import datetime
 from pathlib import Path
-from flask import Flask, render_template, jsonify, request, redirect
+from flask import Flask, render_template, jsonify, request, redirect, flash, url_for
 from werkzeug.utils import secure_filename
 import openpyxl
+import requests as http_requests
 
 app = Flask(__name__)
+app.secret_key = os.urandom(24)
 
 EXCEL_DIR   = Path(__file__).parent
 EXCEL_FILE  = EXCEL_DIR / "Copy of MTL Recommendations - 2.0.xlsx"
@@ -41,6 +44,59 @@ def init_db():
                 conn.execute(f"ALTER TABLE chapters ADD COLUMN {col} {defn}")
             except Exception:
                 pass
+
+
+def extract_sheet_id(url):
+    """Extract Google Sheets file ID from various URL formats."""
+    m = re.search(r'/spreadsheets/d/([a-zA-Z0-9_-]+)', url)
+    return m.group(1) if m else None
+
+
+def validate_excel_bytes(data):
+    """
+    Validate that bytes are a valid .xlsx with a Recommendations sheet.
+    Returns (ok: bool, error_message: str, member_count: int)
+    """
+    try:
+        wb = openpyxl.load_workbook(io.BytesIO(data), data_only=True)
+    except Exception:
+        return False, "Not a valid Excel (.xlsx) file.", 0
+    if "Recommendations" not in wb.sheetnames:
+        return False, f"Sheet 'Recommendations' not found. Sheets found: {', '.join(wb.sheetnames)}", 0
+    # Quick member count
+    ws = wb["Recommendations"]
+    count = sum(
+        1 for row in ws.iter_rows(min_row=1, values_only=True)
+        if len(row) > 2 and isinstance(row[2], str) and "score" in row[2].lower()
+        and row[1] and str(row[1]).strip()
+    )
+    return True, "", count
+
+
+def save_chapter_file(chapter_id, chapter_name, data):
+    """Save bytes as chapter Excel, delete old file, update DB. Returns member_count."""
+    with get_db() as conn:
+        row = conn.execute("SELECT filename FROM chapters WHERE id=?", (chapter_id,)).fetchone()
+    if row and row["filename"]:
+        old = CHAPTERS_DIR / row["filename"]
+        if old.exists():
+            old.unlink()
+    safe_name = re.sub(r'[^a-z0-9]+', '_', chapter_name.lower()).strip('_')
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{safe_name}_{timestamp}.xlsx"
+    (CHAPTERS_DIR / filename).write_bytes(data)
+    try:
+        _, members = parse_recommendations(filepath=CHAPTERS_DIR / filename)
+        member_count = len(members)
+    except Exception:
+        member_count = 0
+    uploaded_at = datetime.now().strftime("%d %b %Y, %I:%M %p")
+    with get_db() as conn:
+        conn.execute(
+            "UPDATE chapters SET filename=?, member_count=?, uploaded_at=? WHERE id=?",
+            (filename, member_count, uploaded_at, chapter_id)
+        )
+    return member_count
 
 
 def slugify(text):
@@ -244,34 +300,46 @@ def admin_create():
 @app.route("/admin/upload/<int:chapter_id>", methods=["POST"])
 def admin_upload(chapter_id):
     f = request.files.get("excel")
-    if f and f.filename.endswith(".xlsx"):
-        with get_db() as conn:
-            row = conn.execute("SELECT name, filename FROM chapters WHERE id=?", (chapter_id,)).fetchone()
-        # Delete old file if exists
-        if row and row["filename"]:
-            old = CHAPTERS_DIR / row["filename"]
-            if old.exists():
-                old.unlink()
-        # Build new filename: chaptername_YYYYMMDD_HHMMSS.xlsx
-        chapter_name = row["name"] if row else str(chapter_id)
-        safe_name = re.sub(r'[^a-z0-9]+', '_', chapter_name.lower()).strip('_')
-        now = datetime.now()
-        timestamp = now.strftime("%Y%m%d_%H%M%S")
-        filename = f"{safe_name}_{timestamp}.xlsx"
-        filepath = CHAPTERS_DIR / filename
-        f.save(filepath)
-        # Count members from the uploaded file
-        try:
-            _, members = parse_recommendations(filepath=filepath)
-            member_count = len(members)
-        except Exception:
-            member_count = 0
-        uploaded_at = now.strftime("%d %b %Y, %I:%M %p")
-        with get_db() as conn:
-            conn.execute(
-                "UPDATE chapters SET filename=?, member_count=?, uploaded_at=? WHERE id=?",
-                (filename, member_count, uploaded_at, chapter_id)
-            )
+    if not f or not f.filename.endswith(".xlsx"):
+        flash("Please select a valid .xlsx file.", "error")
+        return redirect("/admin")
+    data = f.read()
+    ok, err, _ = validate_excel_bytes(data)
+    if not ok:
+        flash(f"Invalid file: {err}", "error")
+        return redirect("/admin")
+    with get_db() as conn:
+        row = conn.execute("SELECT name FROM chapters WHERE id=?", (chapter_id,)).fetchone()
+    save_chapter_file(chapter_id, row["name"], data)
+    flash("File uploaded successfully.", "success")
+    return redirect("/admin")
+
+
+@app.route("/admin/fetch/<int:chapter_id>", methods=["POST"])
+def admin_fetch(chapter_id):
+    url = request.form.get("sheet_url", "").strip()
+    sheet_id = extract_sheet_id(url)
+    if not sheet_id:
+        flash("Invalid Google Sheets URL. Please paste the full spreadsheet link.", "error")
+        return redirect("/admin")
+    export_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
+    try:
+        resp = http_requests.get(export_url, timeout=20)
+        if resp.status_code != 200:
+            flash(f"Could not fetch the spreadsheet (HTTP {resp.status_code}). Make sure it is shared publicly.", "error")
+            return redirect("/admin")
+        data = resp.content
+    except Exception as e:
+        flash(f"Network error: {e}", "error")
+        return redirect("/admin")
+    ok, err, _ = validate_excel_bytes(data)
+    if not ok:
+        flash(f"Validation failed: {err}", "error")
+        return redirect("/admin")
+    with get_db() as conn:
+        row = conn.execute("SELECT name FROM chapters WHERE id=?", (chapter_id,)).fetchone()
+    save_chapter_file(chapter_id, row["name"], data)
+    flash("Google Sheet imported successfully.", "success")
     return redirect("/admin")
 
 
