@@ -315,14 +315,15 @@ body{background:var(--bg);color:var(--text);
     <form method="POST" action="/admin/create">
       <div class="input-row" style="margin-bottom:10px;">
         <input class="text-input" type="text" name="name"
-          placeholder="Chapter name…" required autocomplete="off"/>
+          placeholder="Chapter name…" required autocomplete="off"
+          value="{{ create_form.get('name','') }}"/>
       </div>
       <div style="border-top:1px solid var(--border);padding-top:10px;margin-bottom:10px;">
         <div class="create-title" style="margin-bottom:8px;">VP / Chapter Admin</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-          <input class="text-input" type="text" name="vp_name" placeholder="Full name" autocomplete="off"/>
-          <input class="text-input" type="email" name="vp_email" placeholder="Email" autocomplete="off"/>
-          <input class="text-input" type="tel" name="vp_phone" placeholder="Phone" autocomplete="off"/>
+          <input class="text-input" type="text"  name="vp_name"     placeholder="Full name" autocomplete="off" value="{{ create_form.get('vp_name','') }}"/>
+          <input class="text-input" type="email" name="vp_email"    placeholder="Email"     autocomplete="off" value="{{ create_form.get('vp_email','') }}"/>
+          <input class="text-input" type="tel"   name="vp_phone"    placeholder="Phone"     autocomplete="off" value="{{ create_form.get('vp_phone','') }}"/>
           <input class="text-input" type="password" name="vp_password" placeholder="Password" autocomplete="off"/>
         </div>
       </div>

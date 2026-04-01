@@ -367,7 +367,8 @@ def admin():
                 "SELECT * FROM users WHERE chapter_id=? AND role='vp'", (ch["id"],)
             ).fetchone()
             chapter_list.append({"chapter": ch, "vp": vp})
-    return render_template("admin.html", chapter_list=chapter_list, user=user)
+    create_form = session.pop('create_form', {})
+    return render_template("admin.html", chapter_list=chapter_list, user=user, create_form=create_form)
 
 
 @app.route("/admin/edit-user/<int:user_id>", methods=["POST"])
@@ -416,6 +417,12 @@ def admin_create():
     vp_phone    = request.form.get("vp_phone", "").strip()
     vp_password = request.form.get("vp_password", "").strip()
 
+    # Store form data in session so it can be repopulated on error
+    session['create_form'] = {
+        "name": name, "vp_name": vp_name,
+        "vp_email": vp_email, "vp_phone": vp_phone
+    }
+
     # Validate chapter name
     if not name:
         flash("Chapter name is required.", "error")
@@ -459,6 +466,7 @@ def admin_create():
             (vp_name, vp_email, vp_phone, hash_password(vp_password), chapter_id, "vp")
         )
 
+    session.pop('create_form', None)
     flash(f"Chapter '{name}' created with VP login for {vp_email}.", "success")
     return redirect("/admin")
 
