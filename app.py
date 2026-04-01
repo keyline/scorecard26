@@ -62,6 +62,15 @@ def init_db():
                 conn.execute(f"ALTER TABLE chapters ADD COLUMN {col} {defn}")
             except Exception:
                 pass
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS log (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts           TEXT NOT NULL,
+                user_name    TEXT NOT NULL,
+                chapter_name TEXT,
+                activity     TEXT NOT NULL
+            )
+        """)
         # Seed super admin if not exists
         existing = conn.execute("SELECT id FROM users WHERE email=?", ("info@keylines.net",)).fetchone()
         if not existing:
@@ -72,6 +81,15 @@ def init_db():
 
 
 # ── Auth helpers ──────────────────────────────────────────────────────────────
+
+def write_log(user_name, activity, chapter_name=None):
+    ts = datetime.now().strftime("%d %b %Y, %I:%M:%S %p")
+    with get_db() as conn:
+        conn.execute(
+            "INSERT INTO log (ts, user_name, chapter_name, activity) VALUES (?,?,?,?)",
+            (ts, user_name, chapter_name, activity)
+        )
+
 
 def login_required(f):
     @functools.wraps(f)
@@ -296,6 +314,31 @@ def _indian(n):
     return result.lstrip(",")
 
 
+# ── Jinja template helpers ───────────────────────────────────────────────────
+
+def _act_key(activity):
+    a = activity.lower()
+    if "login" in a:        return "login"
+    if "logout" in a:       return "logout"
+    if "created" in a or "create" in a: return "create"
+    if "deleted" in a or "delete" in a: return "delete"
+    if "uploaded" in a or "upload" in a: return "upload"
+    if "google sheet" in a or "imported" in a: return "sheet"
+    if "password" in a:     return "profile"
+    if "profile" in a:      return "profile"
+    if "renamed" in a or "rename" in a: return "rename"
+    return "default"
+
+def activity_icon(activity):
+    return "icon-" + _act_key(activity)
+
+def activity_emoji(activity):
+    return {"login":"🔓","logout":"🔒","create":"➕","delete":"🗑",
+            "upload":"📤","sheet":"📊","profile":"✏️","rename":"🏷","default":"📌"}.get(_act_key(activity),"📌")
+
+app.jinja_env.globals.update(activity_icon=activity_icon, activity_emoji=activity_emoji)
+
+
 # ── Routes ───────────────────────────────────────────────────────────────────
 
 @app.route("/")
@@ -336,6 +379,12 @@ def login():
             user = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
         if user and user["password"] == hash_password(password):
             session["user_id"] = user["id"]
+            ch_name = None
+            if user["role"] != "superadmin" and user["chapter_id"]:
+                with get_db() as c2:
+                    ch = c2.execute("SELECT name FROM chapters WHERE id=?", (user["chapter_id"],)).fetchone()
+                    ch_name = ch["name"] if ch else None
+            write_log(user["name"], "Login", "Super Admin" if user["role"] == "superadmin" else ch_name)
             return redirect("/admin")
         error = "Invalid email or password."
     return render_template("login.html", error=error)
@@ -343,6 +392,14 @@ def login():
 
 @app.route("/logout")
 def logout():
+    u = current_user()
+    if u:
+        ch_name = None
+        if u["role"] != "superadmin" and u["chapter_id"]:
+            with get_db() as conn:
+                ch = conn.execute("SELECT name FROM chapters WHERE id=?", (u["chapter_id"],)).fetchone()
+                ch_name = ch["name"] if ch else None
+        write_log(u["name"], "Logout", "Super Admin" if u["role"] == "superadmin" else ch_name)
     session.clear()
     return redirect("/login")
 
@@ -366,7 +423,15 @@ def admin():
             vp = conn.execute(
                 "SELECT * FROM users WHERE chapter_id=? AND role='vp'", (ch["id"],)
             ).fetchone()
-            chapter_list.append({"chapter": ch, "vp": vp})
+            tl = {"green": 0, "amber": 0, "red": 0, "gray": 0}
+            if ch["filename"]:
+                try:
+                    _, members = parse_recommendations(filepath=CHAPTERS_DIR / ch["filename"])
+                    for m in members:
+                        tl[m["traffic_light"]] += 1
+                except Exception:
+                    pass
+            chapter_list.append({"chapter": ch, "vp": vp, "tl": tl})
     create_form = session.pop('create_form', {})
     return render_template("admin.html", chapter_list=chapter_list, user=user, create_form=create_form)
 
@@ -396,12 +461,21 @@ def admin_edit_user(user_id):
             flash(f"Email '{email}' is already in use by another user.", "error")
             return redirect("/admin")
 
+        target = conn.execute("SELECT name, chapter_id FROM users WHERE id=?", (user_id,)).fetchone()
+        target_name = target["name"] if target else "?"
+        target_ch_id = target["chapter_id"] if target else None
+        ch_row = conn.execute("SELECT name FROM chapters WHERE id=?", (target_ch_id,)).fetchone() if target_ch_id else None
+        target_ch = ch_row["name"] if ch_row else None
         if new_pw:
             conn.execute("UPDATE users SET name=?, email=?, phone=?, password=? WHERE id=?",
                          (name, email, phone, hash_password(new_pw), user_id))
         else:
             conn.execute("UPDATE users SET name=?, email=?, phone=? WHERE id=?",
                          (name, email, phone, user_id))
+    actor = current_user()
+    activity = f"Password & profile updated for user '{target_name}' (name, email, phone, password)" if new_pw \
+               else f"Profile updated for user '{target_name}' (name={name}, email={email}, phone={phone})"
+    write_log(actor["name"], activity, "Super Admin" if actor["role"] == "superadmin" else target_ch)
     flash("User updated successfully.", "success")
     return redirect("/admin")
 
@@ -467,6 +541,8 @@ def admin_create():
         )
 
     session.pop('create_form', None)
+    u = current_user()
+    write_log(u["name"], f"Created new chapter '{name}' with VP {vp_email}", "Super Admin")
     flash(f"Chapter '{name}' created with VP login for {vp_email}.", "success")
     return redirect("/admin")
 
@@ -494,7 +570,11 @@ def admin_rename(chapter_id):
         ).fetchone()
         if slug_conflict:
             new_slug = new_slug + "-" + str(uuid.uuid4())[:6]
+        old_row = conn.execute("SELECT name FROM chapters WHERE id=?", (chapter_id,)).fetchone()
+        old_name = old_row["name"] if old_row else "?"
         conn.execute("UPDATE chapters SET name=?, slug=? WHERE id=?", (new_name, new_slug, chapter_id))
+    u = current_user()
+    write_log(u["name"], f"Renamed chapter '{old_name}' → '{new_name}'", "Super Admin")
     flash(f"Chapter renamed to '{new_name}'.", "success")
     return redirect("/admin")
 
@@ -517,6 +597,8 @@ def admin_upload(chapter_id):
     with get_db() as conn:
         row = conn.execute("SELECT name FROM chapters WHERE id=?", (chapter_id,)).fetchone()
     save_chapter_file(chapter_id, row["name"], data)
+    u = current_user()
+    write_log(u["name"], f"Uploaded new file for chapter", row["name"])
     flash("File uploaded successfully.", "success")
     return redirect("/admin")
 
@@ -549,6 +631,8 @@ def admin_fetch(chapter_id):
     with get_db() as conn:
         row = conn.execute("SELECT name FROM chapters WHERE id=?", (chapter_id,)).fetchone()
     save_chapter_file(chapter_id, row["name"], data)
+    u = current_user()
+    write_log(u["name"], f"Imported Google Sheet for chapter", row["name"])
     flash("Google Sheet imported successfully.", "success")
     return redirect("/admin")
 
@@ -559,15 +643,30 @@ def admin_delete(chapter_id):
     if not is_superadmin():
         return redirect("/admin")
     with get_db() as conn:
-        row = conn.execute("SELECT filename FROM chapters WHERE id=?", (chapter_id,)).fetchone()
+        row = conn.execute("SELECT name, filename FROM chapters WHERE id=?", (chapter_id,)).fetchone()
+        ch_name = row["name"] if row else "?"
         if row and row["filename"]:
             f = CHAPTERS_DIR / row["filename"]
             if f.exists():
                 f.unlink()
         conn.execute("DELETE FROM chapters WHERE id=?", (chapter_id,))
         conn.execute("DELETE FROM users WHERE chapter_id=?", (chapter_id,))
+    u = current_user()
+    write_log(u["name"], f"Deleted chapter '{ch_name}'", "Super Admin")
     flash("Chapter deleted.", "success")
     return redirect("/admin")
+
+
+@app.route("/admin/logs")
+@login_required
+def admin_logs():
+    if not is_superadmin():
+        return redirect("/admin")
+    with get_db() as conn:
+        logs = conn.execute(
+            "SELECT * FROM log ORDER BY id DESC LIMIT 500"
+        ).fetchall()
+    return render_template("logs.html", logs=logs, user=current_user())
 
 
 @app.route("/c/<slug>")

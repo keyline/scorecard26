@@ -62,26 +62,68 @@ body{background:var(--bg);color:var(--text);
 .section-label{font-size:11px;font-weight:700;color:var(--subtle);
   text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;}
 
-/* ── Chapter card ── */
-.chapter-card{background:var(--card);border-radius:var(--radius);
-  border:1px solid var(--border);box-shadow:var(--shadow);
-  margin-bottom:12px;overflow:hidden;}
+/* ── Accordion ── */
+.accordion{display:flex;flex-direction:column;gap:8px;}
 
-/* Top row */
-.ch-top{display:flex;align-items:center;gap:12px;padding:16px 18px 14px;}
-.ch-avatar{width:38px;height:38px;border-radius:10px;background:#f3f4f6;
-  display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
-.ch-info{flex:1;min-width:0;}
-.ch-name{font-size:15px;font-weight:800;white-space:nowrap;
-  overflow:hidden;text-overflow:ellipsis;}
-.ch-slug{font-size:11px;color:var(--subtle);margin-top:1px;}
+.acc-item{background:var(--card);border-radius:var(--radius);
+  border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden;}
+.acc-item.open{border-color:#d1d5db;}
+
+/* Accordion header (always visible) */
+.acc-header{display:flex;align-items:center;gap:12px;padding:13px 16px;
+  cursor:pointer;user-select:none;transition:background .15s;}
+.acc-header:hover{background:#f9fafb;}
+.acc-item.open .acc-header{background:#f9fafb;border-bottom:1px solid var(--border);}
+.ch-avatar{width:36px;height:36px;border-radius:9px;background:#f3f4f6;
+  display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.acc-meta{flex:1;min-width:0;}
+.acc-title{display:flex;align-items:center;gap:5px;}
+.ch-name{font-size:14px;font-weight:800;}
+.acc-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.acc-file-tag{font-size:10px;font-weight:600;color:var(--green);
+  background:#f0fdf4;border:1px solid #bbf7d0;border-radius:20px;padding:2px 8px;}
+.acc-file-tag.none{color:#92400e;background:#fffbeb;border-color:#fde68a;}
+.acc-date{font-size:10px;color:var(--subtle);}
+/* Mini TL badges in accordion header */
+.tl-strip{display:flex;align-items:center;gap:4px;}
+.tl-badge{display:flex;align-items:center;gap:3px;padding:3px 7px;
+  border-radius:20px;font-size:10px;font-weight:800;line-height:1;
+  border:1px solid;}
+.tl-badge.g{background:#f0fdf4;color:#15803d;border-color:#bbf7d0;}
+.tl-badge.a{background:#fffbeb;color:#92400e;border-color:#fde68a;}
+.tl-badge.r{background:#fff1f1;color:#b91c1c;border-color:#fecaca;}
+.tl-badge.gr{background:#f3f4f6;color:#4b5563;border-color:#d1d5db;}
+.tl-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.tl-dot.g {background:#16a34a;}
+.tl-dot.a {background:#d97706;}
+.tl-dot.r {background:#dc2626;}
+.tl-dot.gr{background:#9ca3af;}
+
+.acc-eye{display:flex;align-items:center;justify-content:center;
+  width:28px;height:28px;border-radius:8px;color:var(--subtle);
+  text-decoration:none;transition:background .15s,color .15s;flex-shrink:0;}
+.acc-eye:hover{background:#eff6ff;color:#3b82f6;}
+.acc-chevron{color:var(--subtle);font-size:12px;transition:transform .2s;flex-shrink:0;}
+.acc-item.open .acc-chevron{transform:rotate(180deg);}
 .badge{padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;
   letter-spacing:.03em;white-space:nowrap;border:1px solid;}
 .badge.ready  {background:#f0fdf4;color:#15803d;border-color:#bbf7d0;}
 .badge.pending{background:#fffbeb;color:#92400e;border-color:#fde68a;}
 
+/* Accordion body (collapsible) */
+.acc-body{display:none;}
+.acc-item.open .acc-body{display:block;}
+
+/* Chapter card (inside accordion body) */
+.chapter-card{background:transparent;border:none;box-shadow:none;margin:0;}
+
+/* Top row — used only for rename row now */
+.ch-top{display:flex;align-items:center;gap:12px;padding:14px 16px 0;}
+.ch-info{flex:1;min-width:0;}
+.ch-slug{font-size:11px;color:var(--subtle);margin-top:1px;}
+
 /* Body sections */
-.ch-body{padding:0 18px 16px;display:flex;flex-direction:column;gap:10px;}
+.ch-body{padding:12px 16px 14px;display:flex;flex-direction:column;gap:10px;}
 
 /* Link row */
 .link-row{display:flex;align-items:center;gap:8px;
@@ -229,6 +271,8 @@ body{background:var(--bg);color:var(--text);
 .btn-delete-confirm:disabled{opacity:.35;cursor:not-allowed;}
 .btn-delete-confirm:not(:disabled):hover{background:#dc2626;}
 
+@media(max-width:480px){.tl-strip{display:none;}}
+
 /* Empty */
 .empty{text-align:center;padding:48px 20px;color:var(--muted);}
 .empty-icon{font-size:36px;margin-bottom:10px;}
@@ -249,6 +293,13 @@ body{background:var(--bg);color:var(--text);
     <span style="font-size:12px;color:var(--muted);">
       {% if user.role == 'superadmin' %}⚡ Super Admin{% else %}👤 {{ user.name }}{% endif %}
     </span>
+    {% if user.role == 'superadmin' %}
+    <a class="header-link" href="/admin/logs"
+      style="display:flex;align-items:center;gap:4px;">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      Log
+    </a>
+    {% endif %}
     <a class="header-link" href="/logout" style="color:var(--red);border-color:#fecaca;">
       Sign out
     </a>
@@ -361,15 +412,50 @@ body{background:var(--bg);color:var(--text);
   </div>
   {% endif %}
 
+  <div class="accordion">
   {% for item in chapter_list %}
   {% set ch = item.chapter %}
   {% set vp = item.vp %}
   {% set link = request.host_url + 'c/' + ch.slug %}
-  <div class="chapter-card">
+  <div class="acc-item" id="acc-{{ ch.id }}">
 
-    <!-- Top -->
-    <div class="ch-top">
+    <!-- Accordion Header -->
+    <div class="acc-header" onclick="toggleAccordion({{ ch.id }})">
       <div class="ch-avatar">🏢</div>
+      <div class="acc-meta">
+        <div class="acc-title">
+          <span class="ch-name">{{ ch.name }}</span>
+        </div>
+        <div class="acc-date" id="acc-date-{{ ch.id }}" data-filename="{{ ch.filename or '' }}">
+          {% if ch.filename %}{{ ch.filename }}{% else %}&nbsp;{% endif %}
+        </div>
+      </div>
+      {% if ch.filename %}
+      <div class="tl-strip">
+        <span class="tl-badge g"><span class="tl-dot g"></span>{{ item.tl.green }}</span>
+        <span class="tl-badge a"><span class="tl-dot a"></span>{{ item.tl.amber }}</span>
+        <span class="tl-badge r"><span class="tl-dot r"></span>{{ item.tl.red }}</span>
+        <span class="tl-badge gr"><span class="tl-dot gr"></span>{{ item.tl.gray }}</span>
+      </div>
+      {% endif %}
+      <div class="acc-right">
+        <span class="acc-file-tag {{ '' if ch.filename else 'none' }}">
+          {{ '● Active' if ch.filename else '○ No file' }}
+        </span>
+        <a class="acc-eye" href="/c/{{ ch.slug }}" target="_blank"
+          title="Preview chapter" onclick="event.stopPropagation()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </a>
+        <span class="acc-chevron">▼</span>
+      </div>
+    </div>
+
+    <!-- Accordion Body -->
+    <div class="acc-body">
+    <div class="chapter-card">
+
+    <!-- Top (rename) -->
+    <div class="ch-top">
       <div class="ch-info">
         <!-- Static name row -->
         <div class="ch-name-row" id="name-display-{{ ch.id }}">
@@ -396,9 +482,6 @@ body{background:var(--bg);color:var(--text);
         {% endif %}
         <div class="ch-slug" id="slug-display-{{ ch.id }}">/c/{{ ch.slug }}</div>
       </div>
-      <span class="badge {{ 'ready' if ch.filename else 'pending' }}">
-        {{ '● Active' if ch.filename else '○ No file' }}
-      </span>
     </div>
 
     <div class="ch-body">
@@ -492,7 +575,8 @@ body{background:var(--bg);color:var(--text);
     </div>
     {% endif %}
 
-  </div>
+  </div><!-- /.chapter-card (inner) -->
+  </div><!-- /.acc-body -->
 
   <!-- Update User Modal -->
   {% if user.role == 'superadmin' and vp %}
@@ -575,11 +659,28 @@ body{background:var(--bg);color:var(--text);
   </div>
   {% endif %}
 
+  </div><!-- /.acc-item -->
   {% endfor %}
+  </div><!-- /.accordion -->
 
 </div>
 
 <script>
+function toggleAccordion(id) {
+  document.getElementById('acc-' + id).classList.toggle('open');
+}
+function parseFilenameDate(filename) {
+  // Format: chaptername_YYYYMMDD_HHMMSS.xlsx
+  const m = filename.match(/_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})\.xlsx$/i);
+  if (!m) return filename;
+  const [,y,mo,d,h,min] = m;
+  const dt = new Date(+y, +mo-1, +d, +h, +min);
+  return dt.toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true});
+}
+document.querySelectorAll('[id^="acc-date-"]').forEach(el => {
+  const fn = el.dataset.filename;
+  if (fn) el.textContent = parseFilenameDate(fn);
+});
 function copyLink(url, btn) {
   navigator.clipboard.writeText(url).then(() => {
     btn.textContent = 'Copied!';

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<title>Activity Log — BNI Admin</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --accent:#f97316; --bg:#f4f6f9; --card:#fff;
+  --border:#eaecf0; --text:#111827; --muted:#6b7280; --subtle:#9ca3af;
+  --radius:14px; --shadow:0 1px 8px rgba(0,0,0,.06);
+  --green:#16a34a; --red:#dc2626; --blue:#3b82f6; --amber:#d97706;
+}
+body{background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  font-size:14px;min-height:100vh;}
+
+/* Header */
+.header{background:#fff;border-bottom:1px solid var(--border);
+  padding:12px 20px;display:flex;align-items:center;gap:12px;
+  position:sticky;top:0;z-index:50;}
+.header-logo-img{height:28px;width:auto;object-fit:contain;}
+.header-divider{width:1px;height:20px;background:var(--border);}
+.header-title{font-size:14px;font-weight:700;}
+.header-sub{font-size:11px;color:var(--subtle);}
+.header-link{padding:6px 14px;border-radius:8px;
+  background:var(--bg);color:var(--muted);font-size:12px;font-weight:600;
+  border:1px solid var(--border);text-decoration:none;}
+.header-link:hover{border-color:var(--accent);color:var(--accent);}
+
+/* Page */
+.page{padding:24px 16px;max-width:860px;margin:0 auto;}
+.page-title{font-size:18px;font-weight:800;margin-bottom:4px;}
+.page-sub{font-size:12px;color:var(--muted);margin-bottom:20px;}
+
+/* Search */
+.search-bar{display:flex;gap:8px;margin-bottom:16px;}
+.search-input{flex:1;padding:10px 14px;border-radius:9px;
+  border:1.5px solid var(--border);font-size:13px;color:var(--text);
+  outline:none;background:#fff;}
+.search-input:focus{border-color:var(--accent);}
+
+/* Table — desktop */
+.log-table{width:100%;border-collapse:collapse;background:var(--card);
+  border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;
+  border:1px solid var(--border);}
+.log-table th{background:#f9fafb;font-size:10px;font-weight:700;
+  color:var(--subtle);text-transform:uppercase;letter-spacing:.06em;
+  padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);}
+.log-table td{padding:11px 14px;border-bottom:1px solid #f3f4f6;
+  font-size:13px;vertical-align:top;}
+.log-table tr:last-child td{border-bottom:none;}
+.log-table tr:hover td{background:#fafafa;}
+
+/* Mobile cards */
+.log-cards{display:none;flex-direction:column;gap:8px;}
+.log-card{background:var(--card);border-radius:var(--radius);
+  box-shadow:var(--shadow);border:1px solid var(--border);
+  padding:14px 16px;}
+.log-card-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;}
+.log-icon{width:32px;height:32px;border-radius:8px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:14px;}
+.log-card-meta{flex:1;min-width:0;}
+.log-user{font-size:13px;font-weight:700;color:var(--text);}
+.log-ts{font-size:11px;color:var(--subtle);margin-top:1px;}
+.log-chapter-pill{display:inline-block;font-size:10px;font-weight:700;
+  border-radius:20px;padding:2px 8px;margin-top:6px;
+  background:#f1f5f9;color:var(--muted);border:1px solid var(--border);}
+.log-activity{font-size:12px;color:var(--text);line-height:1.5;
+  background:#f9fafb;border-radius:8px;padding:8px 10px;
+  border:1px solid var(--border);}
+
+/* Activity icon colors */
+.icon-login   {background:#dcfce7;color:var(--green);}
+.icon-logout  {background:#f3f4f6;color:var(--muted);}
+.icon-create  {background:#dbeafe;color:var(--blue);}
+.icon-delete  {background:#fee2e2;color:var(--red);}
+.icon-upload  {background:#fff7ed;color:var(--accent);}
+.icon-sheet   {background:#dbeafe;color:var(--blue);}
+.icon-profile {background:#fef9c3;color:var(--amber);}
+.icon-rename  {background:#f3e8ff;color:#7c3aed;}
+.icon-default {background:#f3f4f6;color:var(--muted);}
+
+/* Empty */
+.empty{text-align:center;padding:60px 20px;color:var(--muted);}
+.empty-icon{font-size:40px;margin-bottom:10px;}
+
+/* Responsive */
+@media(max-width:640px){
+  .log-table-wrap{display:none;}
+  .log-cards{display:flex;}
+  .page{padding:16px 12px;}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <img src="/static/bni_logo.png" alt="BNI" class="header-logo-img"/>
+  <div class="header-divider"></div>
+  <div>
+    <div class="header-title">Activity Log</div>
+    <div class="header-sub">Last 500 events</div>
+  </div>
+  <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+    <a class="header-link" href="/admin">← Admin</a>
+    <a class="header-link" href="/logout" style="color:#dc2626;border-color:#fecaca;">Sign out</a>
+  </div>
+</div>
+
+<div class="page">
+  <div class="page-title">Activity Log</div>
+  <div class="page-sub">All user actions are recorded here in real time.</div>
+
+  <div class="search-bar">
+    <input class="search-input" type="text" id="searchInput"
+      placeholder="Search by user, chapter, or activity…" oninput="filterLogs()"/>
+  </div>
+
+  {% if logs %}
+
+  <!-- Desktop table -->
+  <div class="log-table-wrap">
+    <table class="log-table" id="logTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Date &amp; Time</th>
+          <th>User</th>
+          <th>Chapter</th>
+          <th>Activity</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr data-search="{{ (log.user_name ~ ' ' ~ (log.chapter_name or '') ~ ' ' ~ log.activity) | lower }}">
+          <td style="color:var(--subtle);font-size:11px;">{{ log.id }}</td>
+          <td style="white-space:nowrap;color:var(--muted);font-size:12px;">{{ log.ts }}</td>
+          <td style="font-weight:700;">{{ log.user_name }}</td>
+          <td>
+            {% if log.chapter_name %}
+            <span style="font-size:12px;background:#f1f5f9;border-radius:20px;
+              padding:2px 8px;border:1px solid var(--border);color:var(--muted);font-weight:600;">
+              {{ log.chapter_name }}
+            </span>
+            {% else %}—{% endif %}
+          </td>
+          <td style="max-width:340px;">
+            <span style="display:flex;align-items:center;gap:6px;">
+              <span class="log-icon {{ activity_icon(log.activity) }}" style="width:22px;height:22px;border-radius:5px;font-size:11px;">
+                {{ activity_emoji(log.activity) }}
+              </span>
+              {{ log.activity }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Mobile cards -->
+  <div class="log-cards" id="logCards">
+    {% for log in logs %}
+    <div class="log-card" data-search="{{ (log.user_name ~ ' ' ~ (log.chapter_name or '') ~ ' ' ~ log.activity) | lower }}">
+      <div class="log-card-top">
+        <div class="log-icon {{ activity_icon(log.activity) }}">{{ activity_emoji(log.activity) }}</div>
+        <div class="log-card-meta">
+          <div class="log-user">{{ log.user_name }}</div>
+          <div class="log-ts">{{ log.ts }}</div>
+          {% if log.chapter_name %}
+          <span class="log-chapter-pill">{{ log.chapter_name }}</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="log-activity">{{ log.activity }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="empty">
+    <div class="empty-icon">📋</div>
+    <p>No activity recorded yet.</p>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+function filterLogs() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  document.querySelectorAll('#logTable tbody tr, #logCards .log-card').forEach(el => {
+    el.style.display = el.dataset.search.includes(q) ? '' : 'none';
+  });
+}
+</script>
+</body>
+</html>
