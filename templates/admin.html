@@ -148,6 +148,33 @@ body{background:var(--bg);color:var(--text);
   opacity:.7;transition:opacity .15s;}
 .btn-delete:hover{opacity:1;text-decoration:underline;}
 
+/* VP row */
+.vp-row{display:flex;align-items:center;gap:10px;
+  background:#f9fafb;border-radius:8px;padding:10px 12px;border:1px solid var(--border);}
+.vp-avatar{width:32px;height:32px;border-radius:50%;background:#e5e7eb;
+  display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.vp-info{flex:1;min-width:0;}
+.vp-name{font-size:13px;font-weight:700;color:var(--text);}
+.vp-name.no-vp{color:var(--subtle);font-weight:400;}
+.vp-meta{font-size:11px;color:var(--muted);margin-top:1px;}
+.btn-edit-vp{padding:4px 10px;border-radius:6px;border:1px solid var(--border);
+  background:#fff;font-size:11px;font-weight:600;color:var(--muted);
+  cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .15s;}
+.btn-edit-vp:hover{border-color:var(--accent);color:var(--accent);}
+
+/* Edit VP form */
+.edit-form{background:#f9fafb;border-radius:8px;padding:12px;
+  border:1px solid var(--border);display:none;}
+.edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.edit-actions{display:flex;justify-content:flex-end;gap:8px;}
+.btn-save{padding:7px 16px;border-radius:7px;background:var(--accent);
+  color:#fff;font-size:12px;font-weight:700;border:none;cursor:pointer;}
+.btn-save:hover{background:#ea6c00;}
+.btn-cancel{padding:7px 14px;border-radius:7px;background:#fff;
+  color:var(--muted);font-size:12px;font-weight:600;
+  border:1px solid var(--border);cursor:pointer;}
+.btn-cancel:hover{color:var(--text);}
+
 /* Empty */
 .empty{text-align:center;padding:48px 20px;color:var(--muted);}
 .empty-icon{font-size:36px;margin-bottom:10px;}
@@ -212,16 +239,18 @@ body{background:var(--bg);color:var(--text);
   {% endif %}
 
   <!-- List -->
-  <div class="section-label">{{ chapters | length }} Chapter{{ 's' if chapters | length != 1 }}</div>
+  <div class="section-label">{{ chapter_list | length }} Chapter{{ 's' if chapter_list | length != 1 }}</div>
 
-  {% if not chapters %}
+  {% if not chapter_list %}
   <div class="empty">
     <div class="empty-icon">🏢</div>
     <p>No chapters yet. Create your first one above.</p>
   </div>
   {% endif %}
 
-  {% for ch in chapters %}
+  {% for item in chapter_list %}
+  {% set ch = item.chapter %}
+  {% set vp = item.vp %}
   {% set link = request.host_url + 'c/' + ch.slug %}
   <div class="chapter-card">
 
@@ -238,6 +267,40 @@ body{background:var(--bg);color:var(--text);
     </div>
 
     <div class="ch-body">
+
+      <!-- VP info row -->
+      <div class="vp-row">
+        <div class="vp-avatar">👤</div>
+        <div class="vp-info">
+          {% if vp %}
+          <div class="vp-name">{{ vp.name }}</div>
+          <div class="vp-meta">{{ vp.email }}{% if vp.phone %} &nbsp;·&nbsp; {{ vp.phone }}{% endif %}</div>
+          {% else %}
+          <div class="vp-name no-vp">No VP assigned</div>
+          {% endif %}
+        </div>
+        {% if user.role == 'superadmin' and vp %}
+        <button class="btn-edit-vp" type="button" onclick="toggleEdit('edit-{{ ch.id }}')">Edit</button>
+        {% endif %}
+      </div>
+
+      <!-- Edit VP form (superadmin only) -->
+      {% if user.role == 'superadmin' and vp %}
+      <div class="edit-form" id="edit-{{ ch.id }}">
+        <form method="POST" action="/admin/edit-user/{{ vp.id }}">
+          <div class="edit-grid">
+            <input class="text-input" type="text"     name="name"     value="{{ vp.name }}"  placeholder="Full name" required/>
+            <input class="text-input" type="email"    name="email"    value="{{ vp.email }}" placeholder="Email" required/>
+            <input class="text-input" type="tel"      name="phone"    value="{{ vp.phone or '' }}" placeholder="Phone"/>
+            <input class="text-input" type="password" name="password" placeholder="New password (leave blank to keep)"/>
+          </div>
+          <div class="edit-actions">
+            <button type="button" class="btn-cancel" onclick="toggleEdit('edit-{{ ch.id }}')">Cancel</button>
+            <button type="submit" class="btn-save">Save Changes</button>
+          </div>
+        </form>
+      </div>
+      {% endif %}
 
       <!-- Share link -->
       <div class="link-row">
@@ -329,6 +392,10 @@ function copyLink(url, btn) {
 function updateLabel(input, id) {
   document.getElementById('fname-' + id).textContent =
     input.files[0] ? input.files[0].name : 'Choose .xlsx file';
+}
+function toggleEdit(id) {
+  const el = document.getElementById(id);
+  el.style.display = el.style.display === 'block' ? 'none' : 'block';
 }
 function switchTab(id, tab, btn) {
   document.querySelectorAll(`#tabs-${id} .tab-btn`).forEach(b => b.classList.remove('active'));

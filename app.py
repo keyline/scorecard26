@@ -360,7 +360,34 @@ def admin():
             chapters = conn.execute(
                 "SELECT * FROM chapters WHERE id=?", (user["chapter_id"],)
             ).fetchall()
-    return render_template("admin.html", chapters=chapters, user=user)
+        # Attach VP user to each chapter
+        chapter_list = []
+        for ch in chapters:
+            vp = conn.execute(
+                "SELECT * FROM users WHERE chapter_id=? AND role='vp'", (ch["id"],)
+            ).fetchone()
+            chapter_list.append({"chapter": ch, "vp": vp})
+    return render_template("admin.html", chapter_list=chapter_list, user=user)
+
+
+@app.route("/admin/edit-user/<int:user_id>", methods=["POST"])
+@login_required
+def admin_edit_user(user_id):
+    if not is_superadmin():
+        return redirect("/admin")
+    name  = request.form.get("name", "").strip()
+    email = request.form.get("email", "").strip().lower()
+    phone = request.form.get("phone", "").strip()
+    new_pw = request.form.get("password", "").strip()
+    with get_db() as conn:
+        if new_pw:
+            conn.execute("UPDATE users SET name=?, email=?, phone=?, password=? WHERE id=?",
+                         (name, email, phone, hash_password(new_pw), user_id))
+        else:
+            conn.execute("UPDATE users SET name=?, email=?, phone=? WHERE id=?",
+                         (name, email, phone, user_id))
+    flash("User updated successfully.", "success")
+    return redirect("/admin")
 
 
 @app.route("/admin/create", methods=["POST"])
