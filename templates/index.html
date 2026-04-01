@@ -207,6 +207,69 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .total-bar-fill.gray {background:var(--gray);}
 .total-sub{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px;}
 
+/* ── Animations ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes popIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+@keyframes slideRight{from{width:0}to{width:var(--target-w)}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(249,115,22,.25)}50%{box-shadow:0 0 0 8px rgba(249,115,22,0)}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes countUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes ringDraw{from{stroke-dashoffset:283}to{stroke-dashoffset:var(--target-offset)}}
+@keyframes badgePop{0%{transform:scale(0.6);opacity:0}70%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+@keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+
+/* Summary cards animate in */
+.scard{animation:fadeUp .5s ease both;}
+.scard:nth-child(1){animation-delay:.05s}
+.scard:nth-child(2){animation-delay:.12s}
+.scard:nth-child(3){animation-delay:.19s}
+.scard:nth-child(4){animation-delay:.26s}
+.scard .num{animation:countUp .4s ease both;animation-delay:.3s;}
+.scard:hover{transform:translateY(-3px) scale(1.03);transition:transform .2s ease,box-shadow .2s ease;
+  box-shadow:0 6px 20px rgba(0,0,0,.12);}
+
+/* Selector card */
+.selector-wrap{animation:fadeUp .5s ease .25s both;}
+
+/* Hero entrance */
+.hero{animation:fadeUp .55s ease .1s both;}
+.hero-name{animation:fadeUp .4s ease .2s both;}
+
+/* Ring arc animated draw */
+.ring-arc{stroke-dashoffset:283;animation:ringDraw .9s cubic-bezier(.4,0,.2,1) .35s both;}
+
+/* TL badge pop */
+.tl-badge{animation:badgePop .45s cubic-bezier(.34,1.56,.64,1) .7s both;}
+
+/* Bar animations — use CSS var --w set by JS */
+.bar-fill,.metric-bar-fill,.total-bar-fill{width:0 !important;}
+
+/* Metric blocks stagger */
+.metric-block{animation:fadeUp .45s ease both;opacity:0;}
+.total-block{animation:fadeUp .45s ease both;opacity:0;}
+
+/* Tier boxes pop in */
+.tier-box{animation:popIn .3s cubic-bezier(.34,1.56,.64,1) both;}
+.tier-box:nth-child(1){animation-delay:.05s}
+.tier-box:nth-child(2){animation-delay:.12s}
+.tier-box:nth-child(3){animation-delay:.19s}
+.tier-box:nth-child(4){animation-delay:.26s}
+.tier-box:nth-child(5){animation-delay:.33s}
+
+/* Next tier gentle pulse */
+.tier-box.next{animation:popIn .3s cubic-bezier(.34,1.56,.64,1) both,
+  pulse 2s ease-in-out 1s infinite;}
+
+/* Section title */
+.section-title{animation:fadeIn .4s ease .3s both;opacity:0;}
+
+/* Header shimmer on load */
+.header{animation:fadeIn .4s ease both;}
+
+/* Empty state float */
+#emptyState .icon{animation:floatY 2.5s ease-in-out infinite;}
+
 /* Upload modal */
 .upload-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
   z-index:200;align-items:center;justify-content:center;padding:20px;}
@@ -317,7 +380,8 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
             <circle class="ring-track" cx="50" cy="50" r="45"/>
             <circle class="ring-arc {{ tl }}" cx="50" cy="50" r="45"
               stroke-dasharray="{{ circumference }}"
-              stroke-dashoffset="{{ offset }}"/>
+              stroke-dashoffset="{{ offset }}"
+              style="--target-offset:{{ offset }}"/>
           </svg>
           <div class="ring-center">
             <span class="ring-score {{ tl }}">{{ m.total_score }}</span>
@@ -328,7 +392,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
       <div><span class="tl-badge {{ tl }}">{{ tl | title }}</span></div>
       <div class="overall-bar-wrap" style="margin-top:12px;">
         <div class="bar-label"><span>Overall Score</span><span>{{ m.pct }}%</span></div>
-        <div class="bar-bg"><div class="bar-fill {{ tl }}" style="width:{{ m.pct }}%"></div></div>
+        <div class="bar-bg"><div class="bar-fill {{ tl }}" data-w="{{ m.pct }}%"></div></div>
       </div>
     </div>
 
@@ -360,7 +424,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
       </div>
 
       <div class="metric-bar-bg">
-        <div class="metric-bar-fill {{ r.status }}" style="width:{{ bar_pct }}%"></div>
+        <div class="metric-bar-fill {{ r.status }}" data-w="{{ bar_pct }}%"></div>
       </div>
 
       {% if r.metric == "Absent" %}
@@ -423,7 +487,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
         <span class="total-value {{ tl }}">{{ total_m.your_score }} <span style="font-size:14px;color:var(--muted);font-weight:400;">/ {{ total_m.max_score }}</span></span>
       </div>
       <div class="total-bar-bg">
-        <div class="total-bar-fill {{ tl }}" style="width:{{ [total_m.pct,100]|min }}%"></div>
+        <div class="total-bar-fill {{ tl }}" data-w="{{ [total_m.pct,100]|min }}%"></div>
       </div>
       <div class="total-sub"><span>0</span><span>{{ total_m.pct }}%</span><span>{{ total_m.max_score }}</span></div>
     </div>
@@ -436,6 +500,22 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 
 
 <script>
+// Count-up animation for summary cards
+function countUp(el, target, duration) {
+  const start = performance.now();
+  (function step(now) {
+    const p = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(ease * target);
+    if (p < 1) requestAnimationFrame(step);
+  })(start);
+}
+document.querySelectorAll('.scard .num').forEach(el => {
+  const val = parseInt(el.textContent, 10);
+  el.textContent = '0';
+  setTimeout(() => countUp(el, val, 900), 300);
+});
+
 const nameToId = {};
 {% for m in members %}
 nameToId["{{ m.name }}"] = "card-{{ m.name | replace(' ','_') | replace('(','') | replace(')','') | replace('.','') }}";
@@ -453,6 +533,41 @@ function showMember(name) {
     const card = document.getElementById(id);
     if (card) {
       card.classList.add('active');
+
+      // Re-trigger animations by resetting them
+      card.querySelectorAll('.metric-block,.total-block').forEach((el, i) => {
+        el.style.animation = 'none';
+        el.offsetHeight; // reflow
+        el.style.animation = '';
+        el.style.animationDelay = (0.1 + i * 0.07) + 's';
+      });
+
+      // Animate ring arc
+      card.querySelectorAll('.ring-arc').forEach(arc => {
+        const target = arc.style.getPropertyValue('--target-offset') || arc.getAttribute('stroke-dashoffset');
+        arc.style.animation = 'none';
+        arc.offsetHeight;
+        arc.style.setProperty('--target-offset', target);
+        arc.style.animation = 'ringDraw .9s cubic-bezier(.4,0,.2,1) .3s both';
+      });
+
+      // Animate bars
+      card.querySelectorAll('.bar-fill,.metric-bar-fill,.total-bar-fill').forEach(bar => {
+        // Read target width from data attribute we'll set in template, or parse style
+        const tw = bar.dataset.w || '0%';
+        bar.style.width = '0';
+        bar.style.transition = 'none';
+        bar.offsetHeight;
+        bar.style.transition = 'width .8s cubic-bezier(.4,0,.2,1)';
+        setTimeout(() => { bar.style.width = tw; }, 50);
+      });
+
+      // Animate TL badge
+      card.querySelectorAll('.tl-badge').forEach(b => {
+        b.style.animation = 'none'; b.offsetHeight;
+        b.style.animation = 'badgePop .45s cubic-bezier(.34,1.56,.64,1) .5s both';
+      });
+
       card.scrollIntoView({behavior:'smooth', block:'start'});
     }
   }
