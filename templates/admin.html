@@ -201,6 +201,18 @@ body{background:var(--bg);color:var(--text);
 .modal-foot{display:flex;justify-content:flex-end;gap:8px;
   padding:12px 18px;border-top:1px solid var(--border);}
 
+/* Confirm checkbox */
+.confirm-check{display:flex;align-items:flex-start;gap:10px;
+  background:#fff1f1;border:1px solid #fecaca;border-radius:8px;
+  padding:12px;cursor:pointer;margin-top:4px;}
+.confirm-check input{margin-top:2px;accent-color:var(--red);flex-shrink:0;width:15px;height:15px;}
+.confirm-check span{font-size:13px;color:var(--red);font-weight:600;line-height:1.4;}
+.btn-delete-confirm{padding:8px 16px;border-radius:8px;
+  background:#ef4444;color:#fff;font-size:13px;font-weight:700;
+  border:none;cursor:pointer;transition:opacity .15s;}
+.btn-delete-confirm:disabled{opacity:.35;cursor:not-allowed;}
+.btn-delete-confirm:not(:disabled):hover{background:#dc2626;}
+
 /* Empty */
 .empty{text-align:center;padding:48px 20px;color:var(--muted);}
 .empty-icon{font-size:36px;margin-bottom:10px;}
@@ -364,27 +376,10 @@ body{background:var(--bg);color:var(--text);
           {% endif %}
         </div>
         {% if user.role == 'superadmin' and vp %}
-        <button class="btn-edit-vp" type="button" onclick="toggleEdit('edit-{{ ch.id }}')">Edit</button>
+        <button class="btn-edit-vp" type="button"
+          onclick="openUserModal('userModal-{{ ch.id }}')">Update User</button>
         {% endif %}
       </div>
-
-      <!-- Edit VP form (superadmin only) -->
-      {% if user.role == 'superadmin' and vp %}
-      <div class="edit-form" id="edit-{{ ch.id }}">
-        <form method="POST" action="/admin/edit-user/{{ vp.id }}">
-          <div class="edit-grid">
-            <input class="text-input" type="text"     name="name"     value="{{ vp.name }}"  placeholder="Full name" required/>
-            <input class="text-input" type="email"    name="email"    value="{{ vp.email }}" placeholder="Email" required/>
-            <input class="text-input" type="tel"      name="phone"    value="{{ vp.phone or '' }}" placeholder="Phone"/>
-            <input class="text-input" type="password" name="password" placeholder="New password (leave blank to keep)"/>
-          </div>
-          <div class="edit-actions">
-            <button type="button" class="btn-cancel" onclick="toggleEdit('edit-{{ ch.id }}')">Cancel</button>
-            <button type="submit" class="btn-save">Save Changes</button>
-          </div>
-        </form>
-      </div>
-      {% endif %}
 
       <!-- Share link -->
       <div class="link-row">
@@ -450,17 +445,97 @@ body{background:var(--bg);color:var(--text);
     <!-- Footer — superadmin only -->
     {% if user.role == 'superadmin' %}
     <div class="ch-footer">
-      <form method="POST" action="/admin/delete/{{ ch.id }}"
-        onsubmit="return confirm('Delete {{ ch.name }}?')">
-        <button class="btn-delete" type="submit">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"/></svg>
-          Delete chapter
-        </button>
-      </form>
+      <button class="btn-delete" type="button"
+        onclick="openDeleteModal('deleteModal-{{ ch.id }}')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"/></svg>
+        Delete chapter
+      </button>
     </div>
     {% endif %}
 
   </div>
+
+  <!-- Update User Modal -->
+  {% if user.role == 'superadmin' and vp %}
+  <div class="modal-overlay" id="userModal-{{ ch.id }}">
+    <div class="modal-box">
+      <div class="modal-head">
+        <div class="modal-avatar">{{ vp.name[0] | upper }}</div>
+        <div class="modal-meta">
+          <div class="modal-title">Update User — {{ ch.name }}</div>
+          <div class="modal-subtitle">{{ vp.email }}</div>
+        </div>
+        <button class="modal-close" onclick="closeModal('userModal-{{ ch.id }}')">✕</button>
+      </div>
+      <form method="POST" action="/admin/edit-user/{{ vp.id }}">
+        <div class="modal-body">
+          <div class="modal-grid">
+            <div class="mf">
+              <label>Full Name</label>
+              <input class="text-input" type="text" name="name" value="{{ vp.name }}" required/>
+            </div>
+            <div class="mf">
+              <label>Phone</label>
+              <input class="text-input" type="tel" name="phone" value="{{ vp.phone or '' }}" placeholder="—"/>
+            </div>
+          </div>
+          <div class="mf">
+            <label>Email</label>
+            <input class="text-input" type="email" name="email" value="{{ vp.email }}" required/>
+          </div>
+          <hr class="modal-divider"/>
+          <div class="mf">
+            <label>New Password</label>
+            <input class="text-input" type="password" name="password" placeholder="Leave blank to keep current"/>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn-cancel" onclick="closeModal('userModal-{{ ch.id }}')">Cancel</button>
+          <button type="submit" class="btn-save">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Delete Confirm Modal -->
+  {% if user.role == 'superadmin' %}
+  <div class="modal-overlay" id="deleteModal-{{ ch.id }}">
+    <div class="modal-box" style="max-width:420px;">
+      <div class="modal-head" style="background:#fff1f1;border-bottom-color:#fecaca;">
+        <div style="width:38px;height:38px;border-radius:50%;background:#fee2e2;
+          display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">⚠️</div>
+        <div class="modal-meta">
+          <div class="modal-title" style="color:var(--red);">Delete Chapter</div>
+          <div class="modal-subtitle">{{ ch.name }}</div>
+        </div>
+        <button class="modal-close" onclick="closeModal('deleteModal-{{ ch.id }}')">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:14px;color:var(--text);line-height:1.6;">
+          Are you sure? This will <strong>permanently delete</strong> the chapter, all uploaded files,
+          and the assigned VP user from the system. <strong>This cannot be undone!</strong>
+        </p>
+        <label class="confirm-check">
+          <input type="checkbox" id="confirmChk-{{ ch.id }}"
+            onchange="toggleDeleteBtn('{{ ch.id }}')"/>
+          <span>Yes, I understand this will delete all data permanently.</span>
+        </label>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn-cancel" onclick="closeModal('deleteModal-{{ ch.id }}')">
+          No, Keep It
+        </button>
+        <form method="POST" action="/admin/delete/{{ ch.id }}" style="margin:0;">
+          <button type="submit" class="btn-delete-confirm" id="deleteBtn-{{ ch.id }}" disabled>
+            Yes, Delete Forever
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   {% endfor %}
 
 </div>
@@ -477,10 +552,20 @@ function updateLabel(input, id) {
   document.getElementById('fname-' + id).textContent =
     input.files[0] ? input.files[0].name : 'Choose .xlsx file';
 }
-function toggleEdit(id) {
-  const el = document.getElementById(id);
-  el.style.display = el.style.display === 'block' ? 'none' : 'block';
+function openUserModal(id)   { document.getElementById(id).classList.add('open'); }
+function openDeleteModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id)      { document.getElementById(id).classList.remove('open'); }
+function toggleDeleteBtn(chId) {
+  const chk = document.getElementById('confirmChk-' + chId);
+  const btn = document.getElementById('deleteBtn-' + chId);
+  btn.disabled = !chk.checked;
 }
+// Close modals on overlay click
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('modal-overlay')) {
+    e.target.classList.remove('open');
+  }
+});
 function switchTab(id, tab, btn) {
   document.querySelectorAll(`#tabs-${id} .tab-btn`).forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
