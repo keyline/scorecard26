@@ -342,6 +342,7 @@ app.jinja_env.globals.update(activity_icon=activity_icon, activity_emoji=activit
 # ── Routes ───────────────────────────────────────────────────────────────────
 
 @app.route("/")
+@login_required
 def index():
     with get_db() as conn:
         chapters = conn.execute("SELECT * FROM chapters ORDER BY name ASC").fetchall()
