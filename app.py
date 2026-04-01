@@ -381,14 +381,27 @@ def admin_edit_user(user_id):
     email  = request.form.get("email", "").strip().lower()
     phone  = request.form.get("phone", "").strip()
     new_pw = request.form.get("password", "").strip()
+
+    if not name or not email:
+        flash("Name and email are required.", "error")
+        return redirect("/admin")
+
     with get_db() as conn:
+        # Check email not taken by a different user
+        conflict = conn.execute(
+            "SELECT id FROM users WHERE email=? AND id!=?", (email, user_id)
+        ).fetchone()
+        if conflict:
+            flash(f"Email '{email}' is already in use by another user.", "error")
+            return redirect("/admin")
+
         if new_pw:
             conn.execute("UPDATE users SET name=?, email=?, phone=?, password=? WHERE id=?",
                          (name, email, phone, hash_password(new_pw), user_id))
         else:
             conn.execute("UPDATE users SET name=?, email=?, phone=? WHERE id=?",
                          (name, email, phone, user_id))
-    flash("Profile updated successfully.", "success")
+    flash("User updated successfully.", "success")
     return redirect("/admin")
 
 
@@ -402,25 +415,51 @@ def admin_create():
     vp_email    = request.form.get("vp_email", "").strip().lower()
     vp_phone    = request.form.get("vp_phone", "").strip()
     vp_password = request.form.get("vp_password", "").strip()
+
+    # Validate chapter name
     if not name:
+        flash("Chapter name is required.", "error")
         return redirect("/admin")
-    slug = slugify(name)
+
+    # Validate VP fields — all required
+    if not vp_name:
+        flash("VP full name is required.", "error")
+        return redirect("/admin")
+    if not vp_email:
+        flash("VP email is required.", "error")
+        return redirect("/admin")
+    if not vp_password:
+        flash("VP password is required.", "error")
+        return redirect("/admin")
+
     with get_db() as conn:
-        existing = conn.execute("SELECT id FROM chapters WHERE slug=?", (slug,)).fetchone()
-        if existing:
+        # Check email not already used
+        existing_user = conn.execute("SELECT id FROM users WHERE email=?", (vp_email,)).fetchone()
+        if existing_user:
+            flash(f"Email '{vp_email}' is already assigned to another user.", "error")
+            return redirect("/admin")
+
+        # Check VP not already assigned to another chapter
+        existing_vp = conn.execute(
+            "SELECT u.id, c.name FROM users u JOIN chapters c ON u.chapter_id=c.id WHERE u.email=?",
+            (vp_email,)
+        ).fetchone()
+        if existing_vp:
+            flash(f"This user is already assigned to chapter '{existing_vp['name']}'.", "error")
+            return redirect("/admin")
+
+        slug = slugify(name)
+        if conn.execute("SELECT id FROM chapters WHERE slug=?", (slug,)).fetchone():
             slug = slug + "-" + str(uuid.uuid4())[:6]
+
         cur = conn.execute("INSERT INTO chapters (name, slug) VALUES (?, ?)", (name, slug))
         chapter_id = cur.lastrowid
-        if vp_email and vp_password:
-            try:
-                conn.execute(
-                    "INSERT INTO users (name, email, phone, password, chapter_id, role) VALUES (?,?,?,?,?,?)",
-                    (vp_name or name + " VP", vp_email, vp_phone, hash_password(vp_password), chapter_id, "vp")
-                )
-            except Exception:
-                flash("Chapter created but VP email already exists.", "error")
-                return redirect("/admin")
-    flash(f"Chapter '{name}' created successfully.", "success")
+        conn.execute(
+            "INSERT INTO users (name, email, phone, password, chapter_id, role) VALUES (?,?,?,?,?,?)",
+            (vp_name, vp_email, vp_phone, hash_password(vp_password), chapter_id, "vp")
+        )
+
+    flash(f"Chapter '{name}' created with VP login for {vp_email}.", "success")
     return redirect("/admin")
 
 
