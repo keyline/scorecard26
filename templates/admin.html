@@ -75,8 +75,11 @@ body{background:var(--bg);color:var(--text);
   cursor:pointer;user-select:none;transition:background .15s;}
 .acc-header:hover{background:#f9fafb;}
 .acc-item.open .acc-header{background:#f9fafb;border-bottom:1px solid var(--border);}
-.ch-avatar{width:36px;height:36px;border-radius:9px;background:#f3f4f6;
-  display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.ch-avatar{width:46px;height:46px;border-radius:50%;
+  background:linear-gradient(135deg,#1e293b,#334155);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  flex-shrink:0;color:#fff;gap:1px;}
+.ch-avatar-count{font-size:13px;font-weight:800;line-height:1;color:#fff;}
 .acc-meta{flex:1;min-width:0;}
 .acc-title{display:flex;align-items:center;gap:5px;}
 .ch-name{font-size:14px;font-weight:800;}
@@ -422,7 +425,10 @@ body{background:var(--bg);color:var(--text);
 
     <!-- Accordion Header -->
     <div class="acc-header" onclick="toggleAccordion({{ ch.id }})">
-      <div class="ch-avatar">🏢</div>
+      <div class="ch-avatar">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:.7"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        <span class="ch-avatar-count">{{ ch.member_count or 0 }}</span>
+      </div>
       <div class="acc-meta">
         <div class="acc-title">
           <span class="ch-name">{{ ch.name }}</span>
