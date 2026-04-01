@@ -148,6 +148,22 @@ body{background:var(--bg);color:var(--text);
   opacity:.7;transition:opacity .15s;}
 .btn-delete:hover{opacity:1;text-decoration:underline;}
 
+/* Rename inline */
+.ch-name-row{display:flex;align-items:center;gap:5px;}
+.btn-pencil{background:none;border:none;cursor:pointer;color:var(--subtle);
+  padding:2px 3px;border-radius:4px;display:flex;align-items:center;
+  opacity:0;transition:opacity .15s;}
+.ch-top:hover .btn-pencil{opacity:1;}
+.btn-pencil:hover{color:var(--accent);background:#fff7f0;}
+.rename-form{display:none;align-items:center;gap:4px;margin-bottom:2px;}
+.rename-form.active{display:flex;}
+.rename-input{padding:4px 8px;border-radius:6px;border:1.5px solid var(--accent);
+  font-size:14px;font-weight:700;color:var(--text);outline:none;width:180px;}
+.btn-rename-ok{background:var(--green);color:#fff;border:none;border-radius:5px;
+  width:24px;height:24px;cursor:pointer;font-size:13px;font-weight:700;flex-shrink:0;}
+.btn-rename-cancel{background:#f1f5f9;color:var(--muted);border:none;border-radius:5px;
+  width:24px;height:24px;cursor:pointer;font-size:12px;flex-shrink:0;}
+
 /* VP row */
 .vp-row{display:flex;align-items:center;gap:10px;
   background:#f9fafb;border-radius:8px;padding:10px 12px;border:1px solid var(--border);}
@@ -355,8 +371,30 @@ body{background:var(--bg);color:var(--text);
     <div class="ch-top">
       <div class="ch-avatar">🏢</div>
       <div class="ch-info">
-        <div class="ch-name">{{ ch.name }}</div>
-        <div class="ch-slug">/c/{{ ch.slug }}</div>
+        <!-- Static name row -->
+        <div class="ch-name-row" id="name-display-{{ ch.id }}">
+          <span class="ch-name">{{ ch.name }}</span>
+          {% if user.role == 'superadmin' %}
+          <button class="btn-pencil" type="button" title="Rename chapter"
+            data-chid="{{ ch.id }}" data-chname="{{ ch.name }}"
+            onclick="startRename(this.dataset.chid, this.dataset.chname)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          {% endif %}
+        </div>
+        <!-- Inline rename form (hidden) -->
+        {% if user.role == 'superadmin' %}
+        <form class="rename-form" id="name-edit-{{ ch.id }}"
+          method="POST" action="/admin/rename/{{ ch.id }}"
+          data-chid="{{ ch.id }}">
+          <input class="rename-input" type="text" name="name"
+            value="{{ ch.name }}" required autocomplete="off"/>
+          <button class="btn-rename-ok" type="submit" title="Save">✓</button>
+          <button class="btn-rename-cancel" type="button" title="Cancel"
+            data-chid="{{ ch.id }}" onclick="cancelRename(this.dataset.chid)">✕</button>
+        </form>
+        {% endif %}
+        <div class="ch-slug" id="slug-display-{{ ch.id }}">/c/{{ ch.slug }}</div>
       </div>
       <span class="badge {{ 'ready' if ch.filename else 'pending' }}">
         {{ '● Active' if ch.filename else '○ No file' }}
@@ -552,6 +590,20 @@ function copyLink(url, btn) {
 function updateLabel(input, id) {
   document.getElementById('fname-' + id).textContent =
     input.files[0] ? input.files[0].name : 'Choose .xlsx file';
+}
+function startRename(id, currentName) {
+  document.getElementById('name-display-' + id).style.display = 'none';
+  const form = document.getElementById('name-edit-' + id);
+  form.classList.add('active');
+  const input = form.querySelector('input');
+  input.value = currentName;
+  input.focus();
+  input.select();
+  input.onkeydown = e => { if (e.key === 'Escape') cancelRename(id); };
+}
+function cancelRename(id) {
+  document.getElementById('name-display-' + id).style.display = '';
+  document.getElementById('name-edit-' + id).classList.remove('active');
 }
 function openUserModal(id)   { document.getElementById(id).classList.add('open'); }
 function openDeleteModal(id) { document.getElementById(id).classList.add('open'); }

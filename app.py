@@ -471,6 +471,34 @@ def admin_create():
     return redirect("/admin")
 
 
+@app.route("/admin/rename/<int:chapter_id>", methods=["POST"])
+@login_required
+def admin_rename(chapter_id):
+    if not is_superadmin():
+        return redirect("/admin")
+    new_name = request.form.get("name", "").strip()
+    if not new_name:
+        flash("Chapter name cannot be empty.", "error")
+        return redirect("/admin")
+    new_slug = slugify(new_name)
+    with get_db() as conn:
+        conflict = conn.execute(
+            "SELECT id FROM chapters WHERE name=? AND id!=?", (new_name, chapter_id)
+        ).fetchone()
+        if conflict:
+            flash(f"A chapter named '{new_name}' already exists. Please choose a unique name.", "error")
+            return redirect("/admin")
+        # Ensure slug uniqueness
+        slug_conflict = conn.execute(
+            "SELECT id FROM chapters WHERE slug=? AND id!=?", (new_slug, chapter_id)
+        ).fetchone()
+        if slug_conflict:
+            new_slug = new_slug + "-" + str(uuid.uuid4())[:6]
+        conn.execute("UPDATE chapters SET name=?, slug=? WHERE id=?", (new_name, new_slug, chapter_id))
+    flash(f"Chapter renamed to '{new_name}'.", "success")
+    return redirect("/admin")
+
+
 @app.route("/admin/upload/<int:chapter_id>", methods=["POST"])
 @login_required
 def admin_upload(chapter_id):
