@@ -14,6 +14,9 @@ import requests as http_requests
 
 app = Flask(__name__)
 app.secret_key = "bni_scorecard_secret_2026"
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["PERMANENT_SESSION_LIFETIME"] = 3600  # 1 hour auto-expire
 
 EXCEL_DIR   = Path(__file__).parent
 EXCEL_FILE  = EXCEL_DIR / "Copy of MTL Recommendations - 2.0.xlsx"
@@ -94,7 +97,31 @@ def write_log(user_name, activity, chapter_name=None):
 def login_required(f):
     @functools.wraps(f)
     def decorated(*args, **kwargs):
-        if not session.get("user_id"):
+        user_id = session.get("user_id")
+        if not user_id:
+            session.clear()
+            return redirect("/login")
+        # Re-validate user exists in DB on every request
+        with get_db() as conn:
+            user = conn.execute("SELECT id FROM users WHERE id=?", (user_id,)).fetchone()
+        if not user:
+            session.clear()
+            return redirect("/login")
+        return f(*args, **kwargs)
+    return decorated
+
+
+def superadmin_required(f):
+    @functools.wraps(f)
+    def decorated(*args, **kwargs):
+        user_id = session.get("user_id")
+        if not user_id:
+            session.clear()
+            return redirect("/login")
+        with get_db() as conn:
+            user = conn.execute("SELECT id, role FROM users WHERE id=?", (user_id,)).fetchone()
+        if not user or user["role"] != "superadmin":
+            session.clear()
             return redirect("/login")
         return f(*args, **kwargs)
     return decorated
@@ -339,6 +366,20 @@ def activity_emoji(activity):
 app.jinja_env.globals.update(activity_icon=activity_icon, activity_emoji=activity_emoji)
 
 
+# ── Session freshness check on every request ─────────────────────────────────
+
+@app.before_request
+def refresh_session():
+    session.permanent = True  # makes PERMANENT_SESSION_LIFETIME apply
+    # If user_id in session but user no longer exists, force logout
+    user_id = session.get("user_id")
+    if user_id:
+        with get_db() as conn:
+            exists = conn.execute("SELECT id FROM users WHERE id=?", (user_id,)).fetchone()
+        if not exists:
+            session.clear()
+
+
 # ── Routes ───────────────────────────────────────────────────────────────────
 
 @app.route("/")
@@ -482,7 +523,7 @@ def admin_edit_user(user_id):
 
 
 @app.route("/admin/create", methods=["POST"])
-@login_required
+@superadmin_required
 def admin_create():
     if not is_superadmin():
         return redirect("/admin")
@@ -549,7 +590,7 @@ def admin_create():
 
 
 @app.route("/admin/rename/<int:chapter_id>", methods=["POST"])
-@login_required
+@superadmin_required
 def admin_rename(chapter_id):
     if not is_superadmin():
         return redirect("/admin")
@@ -639,7 +680,7 @@ def admin_fetch(chapter_id):
 
 
 @app.route("/admin/delete/<int:chapter_id>", methods=["POST"])
-@login_required
+@superadmin_required
 def admin_delete(chapter_id):
     if not is_superadmin():
         return redirect("/admin")
@@ -659,7 +700,7 @@ def admin_delete(chapter_id):
 
 
 @app.route("/admin/logs")
-@login_required
+@superadmin_required
 def admin_logs():
     if not is_superadmin():
         return redirect("/admin")
