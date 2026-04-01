@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<title>BNI Admin — Login</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --accent:#f97316; --red:#dc2626; --red-bg:#fff1f1;
+  --border:#eaecf0; --text:#111827; --muted:#6b7280; --bg:#f4f6f9;
+}
+body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+.card{background:#fff;border-radius:18px;padding:36px 32px;width:100%;max-width:380px;
+  box-shadow:0 4px 24px rgba(0,0,0,.08);border:1px solid var(--border);}
+.logo-wrap{text-align:center;margin-bottom:28px;}
+.logo-wrap img{height:36px;object-fit:contain;}
+.card-title{font-size:20px;font-weight:800;color:var(--text);text-align:center;margin-bottom:4px;}
+.card-sub{font-size:13px;color:var(--muted);text-align:center;margin-bottom:28px;}
+.field{margin-bottom:16px;}
+.field label{display:block;font-size:12px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;}
+.field input{width:100%;padding:11px 14px;border-radius:9px;
+  border:1.5px solid var(--border);font-size:14px;color:var(--text);
+  outline:none;transition:border-color .15s;background:#fff;}
+.field input:focus{border-color:var(--accent);}
+.btn-login{width:100%;padding:12px;border-radius:9px;background:var(--accent);
+  color:#fff;font-size:15px;font-weight:700;border:none;cursor:pointer;
+  margin-top:6px;transition:background .15s;}
+.btn-login:hover{background:#ea6c00;}
+.error{background:var(--red-bg);color:var(--red);border:1px solid #fecaca;
+  border-radius:8px;padding:10px 14px;font-size:13px;font-weight:500;
+  margin-bottom:18px;display:flex;align-items:center;gap:8px;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo-wrap">
+    <img src="/static/bni_logo.png" alt="BNI"/>
+  </div>
+  <div class="card-title">Welcome back</div>
+  <div class="card-sub">Sign in to manage your chapter</div>
+
+  {% if error %}
+  <div class="error">⚠ {{ error }}</div>
+  {% endif %}
+
+  <form method="POST" action="/login">
+    <div class="field">
+      <label>Email</label>
+      <input type="email" name="email" placeholder="you@example.com"
+        required autocomplete="email" autofocus/>
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" name="password" placeholder="••••••••"
+        required autocomplete="current-password"/>
+    </div>
+    <button class="btn-login" type="submit">Sign In →</button>
+  </form>
+</div>
+</body>
+</html>

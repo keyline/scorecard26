@@ -3,15 +3,17 @@ import os
 import sqlite3
 import uuid
 import io
+import hashlib
+import functools
 from datetime import datetime
 from pathlib import Path
-from flask import Flask, render_template, jsonify, request, redirect, flash, url_for
+from flask import Flask, render_template, jsonify, request, redirect, flash, url_for, session
 from werkzeug.utils import secure_filename
 import openpyxl
 import requests as http_requests
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.secret_key = "bni_scorecard_secret_2026"
 
 EXCEL_DIR   = Path(__file__).parent
 EXCEL_FILE  = EXCEL_DIR / "Copy of MTL Recommendations - 2.0.xlsx"
@@ -26,6 +28,10 @@ def get_db():
     return conn
 
 
+def hash_password(pw):
+    return hashlib.sha256(pw.encode()).hexdigest()
+
+
 def init_db():
     with get_db() as conn:
         conn.execute("""
@@ -38,12 +44,54 @@ def init_db():
                 uploaded_at  TEXT
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                name       TEXT NOT NULL,
+                email      TEXT NOT NULL UNIQUE,
+                phone      TEXT,
+                password   TEXT NOT NULL,
+                chapter_id INTEGER,
+                role       TEXT NOT NULL DEFAULT 'vp',
+                FOREIGN KEY (chapter_id) REFERENCES chapters(id)
+            )
+        """)
         # Add columns if upgrading from older schema
         for col, defn in [("member_count", "INTEGER DEFAULT 0"), ("uploaded_at", "TEXT")]:
             try:
                 conn.execute(f"ALTER TABLE chapters ADD COLUMN {col} {defn}")
             except Exception:
                 pass
+        # Seed super admin if not exists
+        existing = conn.execute("SELECT id FROM users WHERE email=?", ("info@keylines.net",)).fetchone()
+        if not existing:
+            conn.execute(
+                "INSERT INTO users (name, email, phone, password, chapter_id, role) VALUES (?,?,?,?,?,?)",
+                ("Subrata Kundu", "info@keylines.net", "9330109091", hash_password("pass1234"), None, "superadmin")
+            )
+
+
+# ── Auth helpers ──────────────────────────────────────────────────────────────
+
+def login_required(f):
+    @functools.wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get("user_id"):
+            return redirect("/login")
+        return f(*args, **kwargs)
+    return decorated
+
+
+def current_user():
+    if not session.get("user_id"):
+        return None
+    with get_db() as conn:
+        return conn.execute("SELECT * FROM users WHERE id=?", (session["user_id"],)).fetchone()
+
+
+def is_superadmin():
+    u = current_user()
+    return u and u["role"] == "superadmin"
 
 
 def extract_sheet_id(url):
@@ -274,18 +322,57 @@ def upload():
     return redirect("/")
 
 
+# ── Auth routes ───────────────────────────────────────────────────────────────
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if session.get("user_id"):
+        return redirect("/admin")
+    error = None
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+        with get_db() as conn:
+            user = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+        if user and user["password"] == hash_password(password):
+            session["user_id"] = user["id"]
+            return redirect("/admin")
+        error = "Invalid email or password."
+    return render_template("login.html", error=error)
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect("/login")
+
+
 # ── Admin routes ─────────────────────────────────────────────────────────────
 
 @app.route("/admin")
+@login_required
 def admin():
+    user = current_user()
     with get_db() as conn:
-        chapters = conn.execute("SELECT * FROM chapters ORDER BY id DESC").fetchall()
-    return render_template("admin.html", chapters=chapters)
+        if user["role"] == "superadmin":
+            chapters = conn.execute("SELECT * FROM chapters ORDER BY name ASC").fetchall()
+        else:
+            chapters = conn.execute(
+                "SELECT * FROM chapters WHERE id=?", (user["chapter_id"],)
+            ).fetchall()
+    return render_template("admin.html", chapters=chapters, user=user)
 
 
 @app.route("/admin/create", methods=["POST"])
+@login_required
 def admin_create():
-    name = request.form.get("name", "").strip()
+    if not is_superadmin():
+        return redirect("/admin")
+    name        = request.form.get("name", "").strip()
+    vp_name     = request.form.get("vp_name", "").strip()
+    vp_email    = request.form.get("vp_email", "").strip().lower()
+    vp_phone    = request.form.get("vp_phone", "").strip()
+    vp_password = request.form.get("vp_password", "").strip()
     if not name:
         return redirect("/admin")
     slug = slugify(name)
@@ -293,12 +380,27 @@ def admin_create():
         existing = conn.execute("SELECT id FROM chapters WHERE slug=?", (slug,)).fetchone()
         if existing:
             slug = slug + "-" + str(uuid.uuid4())[:6]
-        conn.execute("INSERT INTO chapters (name, slug) VALUES (?, ?)", (name, slug))
+        cur = conn.execute("INSERT INTO chapters (name, slug) VALUES (?, ?)", (name, slug))
+        chapter_id = cur.lastrowid
+        if vp_email and vp_password:
+            try:
+                conn.execute(
+                    "INSERT INTO users (name, email, phone, password, chapter_id, role) VALUES (?,?,?,?,?,?)",
+                    (vp_name or name + " VP", vp_email, vp_phone, hash_password(vp_password), chapter_id, "vp")
+                )
+            except Exception:
+                flash("Chapter created but VP email already exists.", "error")
+                return redirect("/admin")
+    flash(f"Chapter '{name}' created successfully.", "success")
     return redirect("/admin")
 
 
 @app.route("/admin/upload/<int:chapter_id>", methods=["POST"])
+@login_required
 def admin_upload(chapter_id):
+    user = current_user()
+    if user["role"] != "superadmin" and user["chapter_id"] != chapter_id:
+        return redirect("/admin")
     f = request.files.get("excel")
     if not f or not f.filename.endswith(".xlsx"):
         flash("Please select a valid .xlsx file.", "error")
@@ -316,7 +418,11 @@ def admin_upload(chapter_id):
 
 
 @app.route("/admin/fetch/<int:chapter_id>", methods=["POST"])
+@login_required
 def admin_fetch(chapter_id):
+    user = current_user()
+    if user["role"] != "superadmin" and user["chapter_id"] != chapter_id:
+        return redirect("/admin")
     url = request.form.get("sheet_url", "").strip()
     sheet_id = extract_sheet_id(url)
     if not sheet_id:
@@ -344,7 +450,10 @@ def admin_fetch(chapter_id):
 
 
 @app.route("/admin/delete/<int:chapter_id>", methods=["POST"])
+@login_required
 def admin_delete(chapter_id):
+    if not is_superadmin():
+        return redirect("/admin")
     with get_db() as conn:
         row = conn.execute("SELECT filename FROM chapters WHERE id=?", (chapter_id,)).fetchone()
         if row and row["filename"]:
@@ -352,6 +461,8 @@ def admin_delete(chapter_id):
             if f.exists():
                 f.unlink()
         conn.execute("DELETE FROM chapters WHERE id=?", (chapter_id,))
+        conn.execute("DELETE FROM users WHERE chapter_id=?", (chapter_id,))
+    flash("Chapter deleted.", "success")
     return redirect("/admin")
 
 
