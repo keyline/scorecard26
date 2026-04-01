@@ -175,24 +175,31 @@ body{background:var(--bg);color:var(--text);
   border:1px solid var(--border);cursor:pointer;}
 .btn-cancel:hover{color:var(--text);}
 
-/* My Profile card */
-.profile-card{background:var(--card);border-radius:var(--radius);
-  border:1px solid var(--border);box-shadow:var(--shadow);margin-bottom:24px;}
-.profile-inner{display:flex;align-items:center;gap:14px;padding:14px 16px;}
-.profile-avatar{width:38px;height:38px;border-radius:50%;
+/* Profile modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);
+  z-index:200;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.open{display:flex;}
+.modal-box{background:#fff;border-radius:16px;width:100%;max-width:480px;
+  box-shadow:0 8px 40px rgba(0,0,0,.15);overflow:hidden;}
+.modal-head{display:flex;align-items:center;gap:12px;padding:16px 18px;
+  border-bottom:1px solid var(--border);}
+.modal-avatar{width:38px;height:38px;border-radius:50%;
   background:linear-gradient(135deg,#fed7aa,#f97316);
   display:flex;align-items:center;justify-content:center;
   font-size:15px;font-weight:800;color:#fff;flex-shrink:0;}
-.profile-meta{flex:1;min-width:0;}
-.profile-title{font-size:13px;font-weight:700;color:var(--text);}
-.profile-subtitle{font-size:11px;color:var(--subtle);}
-.profile-form{border-top:1px solid var(--border);padding:14px 16px;
-  display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;}
-.pf{display:flex;flex-direction:column;gap:3px;min-width:140px;flex:1;}
-.pf label{font-size:10px;font-weight:700;color:var(--subtle);
-  text-transform:uppercase;letter-spacing:.05em;}
-.pf-divider{width:1px;height:36px;background:var(--border);align-self:flex-end;flex-shrink:0;}
-.profile-actions{display:flex;align-items:flex-end;}
+.modal-meta{flex:1;}
+.modal-title{font-size:13px;font-weight:800;color:var(--text);}
+.modal-subtitle{font-size:11px;color:var(--subtle);}
+.modal-close{background:none;border:none;cursor:pointer;color:var(--subtle);
+  font-size:18px;line-height:1;padding:2px 4px;}
+.modal-close:hover{color:var(--text);}
+.modal-body{padding:16px 18px;display:flex;flex-direction:column;gap:10px;}
+.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.mf label{display:block;font-size:10px;font-weight:700;color:var(--subtle);
+  text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
+.modal-divider{border:none;border-top:1px solid var(--border);margin:4px 0;}
+.modal-foot{display:flex;justify-content:flex-end;gap:8px;
+  padding:12px 18px;border-top:1px solid var(--border);}
 
 /* Empty */
 .empty{text-align:center;padding:48px 20px;color:var(--muted);}
@@ -233,38 +240,59 @@ body{background:var(--bg);color:var(--text);
 
   <!-- My Profile — VP only -->
   {% if user.role == 'vp' %}
-  <div class="profile-card">
-    <div class="profile-inner">
-      <div class="profile-avatar">{{ user.name[0] | upper }}</div>
-      <div class="profile-meta">
-        <div class="profile-title">{{ user.name }}</div>
-        <div class="profile-subtitle">{{ user.email }}{% if user.phone %} · {{ user.phone }}{% endif %}</div>
-      </div>
+  <div style="display:flex;align-items:center;gap:12px;background:var(--card);
+    border-radius:var(--radius);border:1px solid var(--border);
+    box-shadow:var(--shadow);padding:12px 16px;margin-bottom:20px;">
+    <div class="modal-avatar">{{ user.name[0] | upper }}</div>
+    <div style="flex:1;">
+      <div style="font-size:13px;font-weight:700;">{{ user.name }}</div>
+      <div style="font-size:11px;color:var(--subtle);">{{ user.email }}{% if user.phone %} · {{ user.phone }}{% endif %}</div>
     </div>
-    <form method="POST" action="/admin/edit-user/{{ user.id }}">
-      <div class="profile-form">
-        <div class="pf">
-          <label>Name</label>
-          <input class="text-input" type="text" name="name" value="{{ user.name }}" required/>
+    <button class="btn-save" onclick="document.getElementById('profileModal').classList.add('open')" type="button">
+      Update Profile
+    </button>
+  </div>
+
+  <!-- Profile Modal -->
+  <div class="modal-overlay" id="profileModal">
+    <div class="modal-box">
+      <div class="modal-head">
+        <div class="modal-avatar">{{ user.name[0] | upper }}</div>
+        <div class="modal-meta">
+          <div class="modal-title">Update Profile &amp; Password</div>
+          <div class="modal-subtitle">{{ user.email }}</div>
         </div>
-        <div class="pf">
-          <label>Email</label>
-          <input class="text-input" type="email" name="email" value="{{ user.email }}" required/>
-        </div>
-        <div class="pf">
-          <label>Phone</label>
-          <input class="text-input" type="tel" name="phone" value="{{ user.phone or '' }}" placeholder="—"/>
-        </div>
-        <div class="pf-divider"></div>
-        <div class="pf">
-          <label>New Password</label>
-          <input class="text-input" type="password" name="password" placeholder="Leave blank to keep"/>
-        </div>
-        <div class="profile-actions">
-          <button class="btn-save" type="submit">Save</button>
-        </div>
+        <button class="modal-close" onclick="document.getElementById('profileModal').classList.remove('open')">✕</button>
       </div>
-    </form>
+      <form method="POST" action="/admin/edit-user/{{ user.id }}">
+        <div class="modal-body">
+          <div class="modal-grid">
+            <div class="mf">
+              <label>Full Name</label>
+              <input class="text-input" type="text" name="name" value="{{ user.name }}" required/>
+            </div>
+            <div class="mf">
+              <label>Phone</label>
+              <input class="text-input" type="tel" name="phone" value="{{ user.phone or '' }}" placeholder="—"/>
+            </div>
+          </div>
+          <div class="mf">
+            <label>Email</label>
+            <input class="text-input" type="email" name="email" value="{{ user.email }}" required/>
+          </div>
+          <hr class="modal-divider"/>
+          <div class="mf">
+            <label>New Password</label>
+            <input class="text-input" type="password" name="password" placeholder="Leave blank to keep current"/>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn-cancel"
+            onclick="document.getElementById('profileModal').classList.remove('open')">Cancel</button>
+          <button type="submit" class="btn-save">Save Changes</button>
+        </div>
+      </form>
+    </div>
   </div>
   {% endif %}
 
