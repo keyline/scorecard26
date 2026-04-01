@@ -373,11 +373,13 @@ def admin():
 @app.route("/admin/edit-user/<int:user_id>", methods=["POST"])
 @login_required
 def admin_edit_user(user_id):
-    if not is_superadmin():
+    u = current_user()
+    # Superadmin can edit anyone; VP can only edit themselves
+    if u["role"] != "superadmin" and u["id"] != user_id:
         return redirect("/admin")
-    name  = request.form.get("name", "").strip()
-    email = request.form.get("email", "").strip().lower()
-    phone = request.form.get("phone", "").strip()
+    name   = request.form.get("name", "").strip()
+    email  = request.form.get("email", "").strip().lower()
+    phone  = request.form.get("phone", "").strip()
     new_pw = request.form.get("password", "").strip()
     with get_db() as conn:
         if new_pw:
@@ -386,7 +388,7 @@ def admin_edit_user(user_id):
         else:
             conn.execute("UPDATE users SET name=?, email=?, phone=? WHERE id=?",
                          (name, email, phone, user_id))
-    flash("User updated successfully.", "success")
+    flash("Profile updated successfully.", "success")
     return redirect("/admin")
 
 

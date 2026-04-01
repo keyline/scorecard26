@@ -175,6 +175,26 @@ body{background:var(--bg);color:var(--text);
   border:1px solid var(--border);cursor:pointer;}
 .btn-cancel:hover{color:var(--text);}
 
+/* My Profile card */
+.profile-card{background:var(--card);border-radius:var(--radius);
+  border:1px solid var(--border);box-shadow:var(--shadow);
+  margin-bottom:24px;overflow:hidden;}
+.profile-header{display:flex;align-items:center;gap:12px;padding:16px 18px;
+  border-bottom:1px solid var(--border);}
+.profile-avatar{width:42px;height:42px;border-radius:50%;
+  background:linear-gradient(135deg,#fed7aa,#f97316);
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;font-weight:800;color:#fff;flex-shrink:0;}
+.profile-title{font-size:14px;font-weight:800;color:var(--text);}
+.profile-subtitle{font-size:11px;color:var(--subtle);margin-top:1px;}
+.profile-body{padding:16px 18px;}
+.profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.profile-field label{display:block;font-size:10px;font-weight:700;
+  color:var(--subtle);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
+.profile-divider{border:none;border-top:1px solid var(--border);margin:14px 0;}
+.profile-pw-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.profile-actions{display:flex;justify-content:flex-end;}
+
 /* Empty */
 .empty{text-align:center;padding:48px 20px;color:var(--muted);}
 .empty-icon{font-size:36px;margin-bottom:10px;}
@@ -211,6 +231,52 @@ body{background:var(--bg);color:var(--text);
   </div>
   {% endfor %}
   {% endwith %}
+
+  <!-- My Profile — VP only -->
+  {% if user.role == 'vp' %}
+  <div class="profile-card">
+    <div class="profile-header">
+      <div class="profile-avatar">{{ user.name[0] | upper }}</div>
+      <div>
+        <div class="profile-title">{{ user.name }}</div>
+        <div class="profile-subtitle">Chapter VP &nbsp;·&nbsp; {{ user.email }}</div>
+      </div>
+    </div>
+    <div class="profile-body">
+      <form method="POST" action="/admin/edit-user/{{ user.id }}">
+        <div class="profile-grid">
+          <div class="profile-field">
+            <label>Full Name</label>
+            <input class="text-input" type="text" name="name"
+              value="{{ user.name }}" required/>
+          </div>
+          <div class="profile-field">
+            <label>Phone</label>
+            <input class="text-input" type="tel" name="phone"
+              value="{{ user.phone or '' }}" placeholder="Phone number"/>
+          </div>
+          <div class="profile-field">
+            <label>Email</label>
+            <input class="text-input" type="email" name="email"
+              value="{{ user.email }}" required/>
+          </div>
+        </div>
+        <hr class="profile-divider"/>
+        <div class="create-title" style="margin-bottom:8px;">Change Password</div>
+        <div class="profile-pw-row">
+          <div class="profile-field">
+            <label>New Password</label>
+            <input class="text-input" type="password" name="password"
+              placeholder="Leave blank to keep current"/>
+          </div>
+        </div>
+        <div class="profile-actions">
+          <button class="btn-save" type="submit">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
 
   <!-- Create — superadmin only -->
   {% if user.role == 'superadmin' %}
