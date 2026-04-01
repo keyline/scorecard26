@@ -60,7 +60,7 @@ def init_db():
             )
         """)
         # Add columns if upgrading from older schema
-        for col, defn in [("member_count", "INTEGER DEFAULT 0"), ("uploaded_at", "TEXT")]:
+        for col, defn in [("member_count", "INTEGER DEFAULT 0"), ("uploaded_at", "TEXT"), ("sheet_url", "TEXT")]:
             try:
                 conn.execute(f"ALTER TABLE chapters ADD COLUMN {col} {defn}")
             except Exception:
@@ -672,10 +672,48 @@ def admin_fetch(chapter_id):
         return redirect("/admin")
     with get_db() as conn:
         row = conn.execute("SELECT name FROM chapters WHERE id=?", (chapter_id,)).fetchone()
+        conn.execute("UPDATE chapters SET sheet_url=? WHERE id=?", (url, chapter_id))
     save_chapter_file(chapter_id, row["name"], data)
     u = current_user()
     write_log(u["name"], f"Imported Google Sheet for chapter", row["name"])
     flash("Google Sheet imported successfully.", "success")
+    return redirect("/admin")
+
+
+@app.route("/admin/refetch/<int:chapter_id>", methods=["POST"])
+@login_required
+def admin_refetch(chapter_id):
+    user = current_user()
+    if user["role"] != "superadmin" and user["chapter_id"] != chapter_id:
+        return redirect("/admin")
+    with get_db() as conn:
+        row = conn.execute("SELECT name, sheet_url FROM chapters WHERE id=?", (chapter_id,)).fetchone()
+    if not row or not row["sheet_url"]:
+        flash("No Google Sheet URL saved for this chapter.", "error")
+        return redirect("/admin")
+    url = row["sheet_url"]
+    sheet_id = extract_sheet_id(url)
+    if not sheet_id:
+        flash("Saved URL is invalid. Please re-enter the Google Sheets link.", "error")
+        return redirect("/admin")
+    export_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
+    try:
+        resp = http_requests.get(export_url, timeout=20)
+        if resp.status_code != 200:
+            flash(f"Could not fetch the spreadsheet (HTTP {resp.status_code}).", "error")
+            return redirect("/admin")
+        data = resp.content
+    except Exception as e:
+        flash(f"Network error: {e}", "error")
+        return redirect("/admin")
+    ok, err, _ = validate_excel_bytes(data)
+    if not ok:
+        flash(f"Validation failed: {err}", "error")
+        return redirect("/admin")
+    save_chapter_file(chapter_id, row["name"], data)
+    u = current_user()
+    write_log(u["name"], "Re-fetched Google Sheet for chapter", row["name"])
+    flash("Google Sheet re-fetched successfully.", "success")
     return redirect("/admin")
 
 

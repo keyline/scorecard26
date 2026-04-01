@@ -558,10 +558,27 @@ body{background:var(--bg);color:var(--text);
 
     <!-- Google Sheets pane -->
     <div class="tab-pane" id="pane-gsheet-{{ ch.id }}">
+
+      {% if ch.sheet_url %}
+      <!-- Saved URL — show re-fetch button + option to change -->
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" style="flex-shrink:0"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        <span style="flex:1;font-size:11px;color:#166534;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ ch.sheet_url }}</span>
+        <form method="POST" action="/admin/refetch/{{ ch.id }}" style="margin:0;flex-shrink:0;">
+          <button class="btn-fetch" type="submit" style="padding:6px 12px;font-size:11px;display:flex;align-items:center;gap:4px;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+            Fetch Again
+          </button>
+        </form>
+      </div>
+      <p class="hint" style="margin-bottom:8px;">To use a different sheet, paste a new link below:</p>
+      {% endif %}
+
       <form method="POST" action="/admin/fetch/{{ ch.id }}">
         <div class="gsheet-area">
           <input class="gsheet-input" type="text" name="sheet_url"
-            placeholder="Paste Google Sheets link…" autocomplete="off"/>
+            placeholder="Paste Google Sheets link…" autocomplete="off"
+            value="{{ ch.sheet_url or '' }}"/>
           <button class="btn-fetch" type="submit">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
             Import
